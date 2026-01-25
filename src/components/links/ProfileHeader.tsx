@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { FaFolder, FaInstagram, FaLinkedin } from 'react-icons/fa';
+import { FaGoogleDrive, FaInstagram, FaLinkedin } from 'react-icons/fa';
 
 import NextImage from '@/components/NextImage';
 import Typography from '@/components/Typography';
@@ -37,15 +37,30 @@ export default function ProfileHeader() {
       </div>
 
       <div className='flex gap-4 items-center text-white'>
-        <button className='hover:text-gray-300 transition-colors'>
-          <FaFolder className='w-6 h-6' />
-        </button>
-        <button className='hover:text-gray-300 transition-colors'>
+        <a
+          href='https://drive.google.com/drive/folders/1XlA28bfRCZKmmMUAnr2VdsXW51M2v-UH?usp=sharing'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='hover:text-gray-300 transition-colors'
+        >
+          <FaGoogleDrive className='w-6 h-6' />
+        </a>
+        <a
+          href='https://www.instagram.com/jmmi.its/'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='hover:text-gray-300 transition-colors'
+        >
           <FaInstagram className='w-6 h-6' />
-        </button>
-        <button className='hover:text-gray-300 transition-colors'>
+        </a>
+        <a
+          href='https://www.linkedin.com/company/jmmi-its/'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='hover:text-gray-300 transition-colors'
+        >
           <FaLinkedin className='w-6 h-6' />
-        </button>
+        </a>
       </div>
     </div>
   );
