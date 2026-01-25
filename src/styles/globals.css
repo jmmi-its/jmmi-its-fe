@@ -24,6 +24,21 @@
   /* Animation configuration */
   --animate-flicker: flicker 3s linear infinite;
   --animate-shimmer: shimmer 1.3s linear infinite;
+  /* New Brand Color Palette */
+  --color-brand-red: #d15928;
+  --color-brand-red-700: #b83919;
+
+  --color-brand-yellow: #f5ba6e;
+  --color-brand-yellow-700: #de9513;
+
+  --color-brand-green: #45513b;
+  --color-brand-green-700: #2e371a;
+
+  --color-brand-blue: #7b8caa;
+  --color-brand-blue-700: #265088;
+
+  --color-brand-black: #21221d;
+  --color-brand-beige: #dcd7c9;
 }
 
 /* Animation keyframes */
