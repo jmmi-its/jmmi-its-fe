@@ -35,9 +35,9 @@ export default function FoldersListPage() {
 
   const handleItemClick = (item: Folder) => {
     if (action === 'edit') {
-      router.push(`/links/admin/folders/${item.folder_id}/edit`);
+      router.push(`/links/admin/folders/edit?id=${item.folder_id}`);
     } else if (action === 'delete') {
-      router.push(`/links/admin/folders/${item.folder_id}/delete`);
+      router.push(`/links/admin/folders/delete?id=${item.folder_id}`);
     }
   };
 

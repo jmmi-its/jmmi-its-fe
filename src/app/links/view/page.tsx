@@ -1,7 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { Suspense } from 'react';
 import { FaFolder, FaInstagram, FaLinkedin } from 'react-icons/fa';
 import { IoChevronBack } from 'react-icons/io5';
 
@@ -14,10 +15,10 @@ import { useGetFolderById } from '@/app/links/hook/useFolder';
 
 import { Link, SubheadingWithLinks } from '@/types/entities/links';
 
-export default function FolderDetailPage() {
-  const params = useParams();
+function FolderViewContent() {
   const router = useRouter();
-  const folderId = params.folderId as string;
+  const searchParams = useSearchParams();
+  const folderId = searchParams.get('id');
 
   const {
     data: folderData,
@@ -37,6 +38,8 @@ export default function FolderDetailPage() {
   }, [folderId, fetchFolder]);
 
   const isLoading = isLoadingData;
+
+  if (!folderId) return null;
 
   if (isLoading) {
     return (
@@ -194,5 +197,19 @@ export default function FolderDetailPage() {
         <div className='h-12'></div>
       </div>
     </>
+  );
+}
+
+export default function FolderDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen flex items-center justify-center'>
+          <Typography className='text-white'>Loading...</Typography>
+        </div>
+      }
+    >
+      <FolderViewContent />
+    </Suspense>
   );
 }

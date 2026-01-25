@@ -61,9 +61,9 @@ export default function SubheadingsListPage() {
 
   const handleItemClick = (item: SubheadingListItem) => {
     if (action === 'edit') {
-      router.push(`/links/admin/subheadings/${item.subheading_id}/edit`);
+      router.push(`/links/admin/subheadings/edit?id=${item.subheading_id}`);
     } else if (action === 'delete') {
-      router.push(`/links/admin/subheadings/${item.subheading_id}/delete`);
+      router.push(`/links/admin/subheadings/delete?id=${item.subheading_id}`);
     }
   };
 

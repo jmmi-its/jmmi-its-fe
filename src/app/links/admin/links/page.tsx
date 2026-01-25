@@ -35,9 +35,9 @@ export default function LinksListPage() {
 
   const handleItemClick = (item: Link) => {
     if (action === 'edit') {
-      router.push(`/links/admin/links/${item.link_id}/edit`);
+      router.push(`/links/admin/links/edit?id=${item.link_id}`);
     } else if (action === 'delete') {
-      router.push(`/links/admin/links/${item.link_id}/delete`);
+      router.push(`/links/admin/links/delete?id=${item.link_id}`);
     }
   };
 

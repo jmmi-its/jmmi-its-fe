@@ -1,39 +1,50 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { Suspense } from 'react';
 
 import Loading from '@/components/Loading';
 import Typography from '@/components/Typography';
 
-import { useDeleteLink, useGetLinkById } from '@/app/links/hook/useLink';
+import {
+  useDeleteSubheading,
+  useGetSubheadingById,
+} from '@/app/links/hook/useSubheading';
 
-export default function DeleteLinkPage() {
+function DeleteSubheadingContent() {
   const router = useRouter();
-  const params = useParams();
-  const linkId = params.id as string;
+  const searchParams = useSearchParams();
+  const subheadingId = searchParams.get('id');
 
-  const { data: link, fetchLink, isLoading: isLoadingData } = useGetLinkById();
-  const { mutateAsync: deleteLink, isLoading: isDeleting } = useDeleteLink();
+  const {
+    data: subheading,
+    fetchSubheading,
+    isLoading: isLoadingData,
+  } = useGetSubheadingById();
+  const { mutateAsync: deleteSubheading, isLoading: isDeleting } =
+    useDeleteSubheading();
 
   React.useEffect(() => {
-    if (linkId) {
-      fetchLink(linkId);
+    if (subheadingId) {
+      fetchSubheading(subheadingId);
     }
-  }, [linkId, fetchLink]);
+  }, [subheadingId, fetchSubheading]);
 
   const handleDelete = async () => {
-    // console.log('Deleting link:', linkId);
+    if (!subheadingId) return;
     try {
-      await deleteLink(linkId);
-      router.push('/links/admin');
+      await deleteSubheading(subheadingId);
+      router.push('/links/admin/subheadings');
     } catch (error) {
-      alert('Terjadi kesalahan saat menghapus link');
+      alert('Terjadi kesalahan saat menghapus subheading');
     }
   };
 
   const isLoading = isLoadingData;
-  const linkTitle = link?.title || '';
+  const subheadingTitle = subheading?.title || '';
+
+  if (!subheadingId) return null;
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -42,36 +53,33 @@ export default function DeleteLinkPage() {
   return (
     <div className='min-h-screen flex items-center justify-center p-4'>
       <div className='relative z-10 w-full max-w-md bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/10 shadow-xl'>
-        {/* Header */}
         <div className='text-center mb-6'>
           <Typography
             as='h2'
             variant='h4'
             className='text-red-400 font-bold mb-2'
           >
-            Hapus Link?
+            Hapus Subheading?
           </Typography>
           <div className='w-16 h-1 bg-red-500 mx-auto rounded-full'></div>
         </div>
 
-        {/* Content */}
         <div className='space-y-4 mb-8 text-center'>
           <Typography className='text-gray-100'>
-            Apakah Anda yakin ingin menghapus link ini?
+            Apakah Anda yakin ingin menghapus subheading ini?
           </Typography>
 
           <div className='bg-black/20 rounded-lg px-4 py-3 border border-white/5'>
             <Typography className='text-white font-medium text-lg'>
-              {linkTitle}
+              {subheadingTitle}
             </Typography>
           </div>
 
           <Typography className='text-red-200 text-sm'>
-            ⚠️ Tindakan ini tidak dapat dibatalkan.
+            ⚠️ Semua link di dalamnya akan ikut terhapus.
           </Typography>
         </div>
 
-        {/* Action Buttons */}
         <div className='flex flex-col gap-3'>
           <button
             onClick={handleDelete}
@@ -82,7 +90,7 @@ export default function DeleteLinkPage() {
           </button>
 
           <button
-            onClick={() => router.push('/links/admin')}
+            onClick={() => router.push('/links/admin/subheadings')}
             disabled={isDeleting}
             className='w-full bg-white/10 text-white font-medium py-3 px-6 rounded-lg hover:bg-white/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
           >
@@ -91,5 +99,13 @@ export default function DeleteLinkPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DeleteSubheadingPage() {
+  return (
+    <Suspense fallback={<Loading fullScreen />}>
+      <DeleteSubheadingContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { Suspense } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 
 import Loading from '@/components/Loading';
@@ -12,10 +13,10 @@ import {
   useUpdateCategory,
 } from '@/app/links/hook/useCategory';
 
-export default function EditCategoryPage() {
+function EditCategoryContent() {
   const router = useRouter();
-  const params = useParams();
-  const categoryId = params.id as string;
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('id');
 
   const {
     data: category,
@@ -49,6 +50,8 @@ export default function EditCategoryPage() {
       return;
     }
 
+    if (!categoryId) return;
+
     const categoryData = {
       category_id: categoryId,
       title: categoryTitle,
@@ -57,7 +60,7 @@ export default function EditCategoryPage() {
 
     try {
       await updateCategory(categoryId, categoryData);
-      router.push('/links/admin');
+      router.push('/links/admin/categories');
     } catch (error) {
       alert('Terjadi kesalahan saat update kategori');
     }
@@ -122,7 +125,7 @@ export default function EditCategoryPage() {
 
               <button
                 type='button'
-                onClick={() => router.push('/links/admin')}
+                onClick={() => router.push('/links/admin/categories')}
                 className='w-full text-white py-2 hover:text-gray-300 transition-colors flex items-center justify-center gap-2'
               >
                 <IoChevronBack className='w-5 h-5' />
@@ -133,5 +136,13 @@ export default function EditCategoryPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function EditCategoryPage() {
+  return (
+    <Suspense fallback={<Loading fullScreen />}>
+      <EditCategoryContent />
+    </Suspense>
   );
 }

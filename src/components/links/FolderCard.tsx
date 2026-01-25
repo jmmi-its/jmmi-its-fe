@@ -23,7 +23,7 @@ export default function FolderCard({
   const router = useRouter();
 
   const handleClick = () => {
-    router.push(`/links/${folderId}`);
+    router.push(`/links/view?id=${folderId}`);
   };
 
   return (

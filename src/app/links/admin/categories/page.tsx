@@ -37,9 +37,9 @@ export default function CategoriesListPage() {
 
   const handleItemClick = (item: Category) => {
     if (action === 'edit') {
-      router.push(`/links/admin/categories/${item.category_id}/edit`);
+      router.push(`/links/admin/categories/edit?id=${item.category_id}`);
     } else if (action === 'delete') {
-      router.push(`/links/admin/categories/${item.category_id}/delete`);
+      router.push(`/links/admin/categories/delete?id=${item.category_id}`);
     }
   };
 

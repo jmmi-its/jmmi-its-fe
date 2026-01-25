@@ -1,7 +1,8 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { Suspense } from 'react';
 import { IoChevronBack } from 'react-icons/io5';
 
 import Loading from '@/components/Loading';
@@ -11,10 +12,10 @@ import { useGetFolders } from '@/app/links/hook/useFolder';
 import { useGetLinkById, useUpdateLink } from '@/app/links/hook/useLink';
 import { useGetSubheadings } from '@/app/links/hook/useSubheading';
 
-export default function EditLinkPage() {
+function EditLinkContent() {
   const router = useRouter();
-  const params = useParams();
-  const linkId = params.id as string;
+  const searchParams = useSearchParams();
+  const linkId = searchParams.get('id');
 
   const { data: link, fetchLink, isLoading: isLoadingLink } = useGetLinkById();
   const {
@@ -69,6 +70,8 @@ export default function EditLinkPage() {
       return;
     }
 
+    if (!linkId) return;
+
     const linkData = {
       link_id: linkId,
       folder_id: selectedFolder === 'umum' ? null : selectedFolder,
@@ -77,11 +80,9 @@ export default function EditLinkPage() {
       link: linkUrl,
     };
 
-    // console.log('Updating link:', linkData);
-
     try {
       await updateLink(linkId, linkData);
-      router.push('/links/admin');
+      router.push('/links/admin/links');
     } catch (error) {
       alert('Terjadi kesalahan saat update link');
     }
@@ -91,7 +92,7 @@ export default function EditLinkPage() {
     isLoadingLink || isLoadingFolders || isLoadingSubheadings || isUpdating;
 
   const handleBack = () => {
-    router.push('/links/admin');
+    router.push('/links/admin/links');
   };
 
   if (isLoading) {
@@ -246,5 +247,13 @@ export default function EditLinkPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function EditLinkPage() {
+  return (
+    <Suspense fallback={<Loading fullScreen />}>
+      <EditLinkContent />
+    </Suspense>
   );
 }

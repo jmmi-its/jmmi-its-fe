@@ -1,43 +1,50 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { Suspense } from 'react';
 
 import Loading from '@/components/Loading';
 import Typography from '@/components/Typography';
 
-import { useDeleteFolder, useGetFolderById } from '@/app/links/hook/useFolder';
+import {
+  useDeleteCategory,
+  useGetCategoryById,
+} from '@/app/links/hook/useCategory';
 
-export default function DeleteFolderPage() {
+function DeleteCategoryContent() {
   const router = useRouter();
-  const params = useParams();
-  const folderId = params.id as string;
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('id');
 
   const {
-    data: folderData,
-    fetchFolder,
-    isLoading: isLoadingFolder,
-  } = useGetFolderById();
-  const { mutate: deleteFolder, isLoading: isDeleting } = useDeleteFolder();
+    data: category,
+    fetchCategory,
+    isLoading: isLoadingData,
+  } = useGetCategoryById();
+  const { mutateAsync: deleteCategory, isLoading: isDeleting } =
+    useDeleteCategory();
 
   React.useEffect(() => {
-    if (folderId) {
-      fetchFolder(folderId);
+    if (categoryId) {
+      fetchCategory(categoryId);
     }
-  }, [folderId, fetchFolder]);
+  }, [categoryId, fetchCategory]);
 
   const handleDelete = async () => {
-    // console.log('Deleting folder:', folderId);
+    if (!categoryId) return;
     try {
-      await deleteFolder(folderId);
-      router.push('/links/admin');
+      await deleteCategory(categoryId);
+      router.push('/links/admin/categories');
     } catch (error) {
-      alert('Terjadi kesalahan saat menghapus folder');
+      alert('Terjadi kesalahan saat menghapus kategori');
     }
   };
 
-  const isLoading = isLoadingFolder;
-  const folderTitle = folderData?.folder?.title || '';
+  const isLoading = isLoadingData;
+  const categoryTitle = category?.title || '';
+
+  if (!categoryId) return null;
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -52,24 +59,25 @@ export default function DeleteFolderPage() {
             variant='h4'
             className='text-red-400 font-bold mb-2'
           >
-            Hapus Folder?
+            Hapus Kategori?
           </Typography>
           <div className='w-16 h-1 bg-red-500 mx-auto rounded-full'></div>
         </div>
 
         <div className='space-y-4 mb-8 text-center'>
           <Typography className='text-gray-100'>
-            Apakah Anda yakin ingin menghapus folder ini beserta isinya?
+            Apakah Anda yakin ingin menghapus kategori ini?
           </Typography>
 
           <div className='bg-black/20 rounded-lg px-4 py-3 border border-white/5'>
             <Typography className='text-white font-medium text-lg'>
-              {folderTitle}
+              {categoryTitle}
             </Typography>
           </div>
 
           <Typography className='text-red-200 text-sm'>
-            ⚠️ Semua link dan subheading di dalamnya akan ikut terhapus.
+            ⚠️ Folder yang ada di dalam kategori ini mungkin akan menjadi
+            'Lainnya' atau perlu dipindahkan.
           </Typography>
         </div>
 
@@ -83,7 +91,7 @@ export default function DeleteFolderPage() {
           </button>
 
           <button
-            onClick={() => router.push('/links/admin')}
+            onClick={() => router.push('/links/admin/categories')}
             disabled={isDeleting}
             className='w-full bg-white/10 text-white font-medium py-3 px-6 rounded-lg hover:bg-white/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
           >
@@ -92,5 +100,13 @@ export default function DeleteFolderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DeleteCategoryPage() {
+  return (
+    <Suspense fallback={<Loading fullScreen />}>
+      <DeleteCategoryContent />
+    </Suspense>
   );
 }
