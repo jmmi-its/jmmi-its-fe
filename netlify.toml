@@ -8,6 +8,6 @@ NODE_VERSION = "20.10.0"
 
 [[redirects]]
   from = "/"
-  to = "/links"
+  to = "/announcement"
   status = 301
   force = true
