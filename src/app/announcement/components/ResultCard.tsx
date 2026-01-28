@@ -10,13 +10,11 @@ import { AnnouncementData } from '@/app/announcement/hook/useCheckAnnouncement';
 const STATIC_CONTENT = {
   passed: {
     groupLink: 'https://chat.whatsapp.com/Ld2svqqCVpk3NczadlIEIz', // Ganti dengan link grup asli
-    skLink:
-      'https://drive.google.com/file/d/17Jb0_J12h3j4567890abcdefghijklmnopqrstuvwxyz/view?usp=sharing', // Ganti dengan link SK asli
+    skLink: 'https://its.id/m/SKLOLOSINTERVIEWJMMIITS2026', // Ganti dengan link SK asli
   },
   failed: {
     motivation: 'Kegagalan adalah kesuksesan yang tertunda. Tetap semangat!',
-    skLink:
-      'https://drive.google.com/file/d/17Jb0_J12h3j4567890abcdefghijklmnopqrstuvwxyz/view?usp=sharing', // Ganti dengan link SK asli
+    skLink: 'https://its.id/m/SKLOLOSINTERVIEWJMMIITS2026', // Ganti dengan link SK asli
   },
 };
 
@@ -48,9 +46,13 @@ export default function ResultCard({ data }: ResultCardProps) {
               isPassed ? 'text-emerald-600' : 'text-rose-600'
             }`}
           >
-            {isPassed ? 'Selamat! Anda Lolos' : 'Mohon Maaf'}
+            {isPassed
+              ? 'Selamat! Anda Lolos Staff Muda JMMI ITS 2026'
+              : 'Mohon Maaf, Anda Dinyatakan Tidak Lolos Staff Muda JMMI ITS 2026'}
           </h2>
-          <p className='text-gray-700 mt-2 font-medium'>Halo, {data.name}</p>
+          {isPassed && (
+            <p className='text-gray-700 mt-2 font-medium'>Halo, {data.name}</p>
+          )}
         </div>
 
         {/* Content Body */}
@@ -76,8 +78,9 @@ export default function ResultCard({ data }: ResultCardProps) {
                 "{STATIC_CONTENT.failed.motivation}"
               </p>
               <p className='text-sm text-gray-500'>
-                Jangan berkecil hati, masih banyak kesempatan lain menanti Anda.
-                Tetap semangat berkarya!
+                Masih ada kesempatan lain untuk berkembang. Tetaplah menjadi
+                bagian penggerak dari Masjid Manarul Ilmi ITS, semoga sukses di
+                masa depan Anda
               </p>
             </div>
           )}
