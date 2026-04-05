@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import Button from '@/components/buttons/Button';
 import useAuthStore from '@/stores/useAuthStore';
 import LinksLayoutWrapper from '@/components/links/LinksLayoutWrapper';
@@ -12,6 +13,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   const login = useAuthStore.useLogin();
@@ -98,14 +100,24 @@ export default function AdminLoginPage() {
             <label htmlFor='password' className='block text-sm font-medium text-slate-700'>
               Password
             </label>
-            <input
-              id='password'
-              type='password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder='••••••••'
-              className='mt-2 w-full rounded-md border border-slate-300 bg-slate-50 px-4 py-2 text-slate-900 placeholder-slate-400 transition-colors focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-300'
-            />
+            <div className='relative mt-2'>
+              <input
+                id='password'
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder='••••••••'
+                className='w-full rounded-md border border-slate-300 bg-slate-50 px-4 py-2 pr-12 text-slate-900 placeholder-slate-400 transition-colors focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-300'
+              />
+              <button
+                type='button'
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className='absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 transition-colors hover:text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-300'
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <Button
