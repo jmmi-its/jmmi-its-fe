@@ -7,10 +7,15 @@ import { getToken } from '@/lib/cookies';
 import { UninterceptedApiError } from '@/types/api';
 const context = <GetServerSidePropsContext>{};
 
-export const baseURL =
+const rawBaseURL =
   process.env.NEXT_PUBLIC_RUN_MODE === 'development'
     ? process.env.NEXT_PUBLIC_API_URL_DEV
     : process.env.NEXT_PUBLIC_API_URL_PROD;
+
+// Guard local development from accidental HTTPS localhost misconfiguration.
+export const baseURL =
+  rawBaseURL?.replace('https://localhost:3333', 'http://localhost:3333') ||
+  'http://localhost:3333/api';
 
 export const api = axios.create({
   baseURL,

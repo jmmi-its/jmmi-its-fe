@@ -34,8 +34,8 @@ export default function Loading({
 
   if (fullScreen) {
     return (
-      <div className='fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md transition-all duration-300'>
-        <div className='relative flex flex-col items-center justify-center gap-4 p-8 rounded-2xl bg-white/5 shadow-2xl ring-1 ring-white/20'>
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-[url(/images/links/background.png)] bg-cover bg-center transition-all duration-300'>
+        <div className='relative flex flex-col items-center justify-center gap-4 p-8 rounded-2xl bg-white/5 backdrop-blur-xl shadow-2xl ring-1 ring-white/20'>
           {/* Decorative background glow */}
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-primary-500/30 blur-2xl rounded-full animate-pulse'></div>
 

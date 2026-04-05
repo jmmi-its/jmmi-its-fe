@@ -17,7 +17,7 @@ export interface WithAuthProps {
   user: User;
 }
 
-const USER_ROUTE = '/dashboard';
+const USER_ROUTE = '/';
 const ADMIN_ROUTE = '/admin';
 
 export enum RouteRole {
@@ -77,7 +77,7 @@ export default function withAuth<T extends WithAuthProps>(
 
       if (isAuthed || options.withCache) {
         // If the user is already authenticated or caching is enabled, get user details from local storage
-        const storedUser = localStorage.getItem('user-ise');
+        const storedUser = localStorage.getItem('user-jmmi');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           login(parsedUser);
@@ -155,7 +155,7 @@ export default function withAuth<T extends WithAuthProps>(
             routeRole !== 'admin' &&
             routeRole !== 'user'
           ) {
-            router.push('/auth/login');
+            router.push('/login');
           } else {
             if (
               routeRole !== 'public' &&
@@ -164,10 +164,10 @@ export default function withAuth<T extends WithAuthProps>(
               routeRole !== 'user'
             ) {
               showToast("You don't have access to this page!", DANGER_TOAST);
-              router.push('/auth/login');
+              router.push('/login');
             } else if (routeRole === 'admin' || routeRole === 'user') {
               showToast("You don't have access to this page!", DANGER_TOAST);
-              router.push('/auth/login');
+              router.push('/login');
             }
           }
         }

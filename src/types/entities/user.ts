@@ -1,7 +1,10 @@
-export type AdminRole = 'admin' | 'event' | 'mentoring' | 'publication';
+export type AdminRole = 'admin' | 'event' | 'mentoring' | 'publication' | 'ADMIN';
 
 export interface User {
+  id?: string;
   role: string;
+  name?: string;
+  email?: string;
   access_token: string;
   refresh_token: string;
 }
