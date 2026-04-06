@@ -6,6 +6,7 @@ import FolderCard from '@/components/links/FolderCard';
 import LinkButton from '@/components/links/LinkButton';
 import ProfileHeader from '@/components/links/ProfileHeader';
 import Loading from '@/components/Loading';
+import { DANGER_TOAST, showToast } from '@/components/Toast';
 import Typography from '@/components/Typography';
 
 import { useGetLinksHomepage } from '@/app/links/hook/useLink';
@@ -32,6 +33,14 @@ export default function LinksPage() {
   React.useEffect(() => {
     fetchLinksHomepage();
   }, [fetchLinksHomepage]);
+
+  React.useEffect(() => {
+    const hasInvalidFolderKey = sessionStorage.getItem('links:folder-key-invalid');
+    if (!hasInvalidFolderKey) return;
+
+    sessionStorage.removeItem('links:folder-key-invalid');
+    showToast('Key folder salah', DANGER_TOAST);
+  }, []);
 
   const { general_links, category_links, folders, categories } = linksData;
 

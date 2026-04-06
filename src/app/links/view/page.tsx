@@ -70,6 +70,12 @@ function FolderViewContent() {
     if (!hasTriedLoad || folderData?.folder) return;
 
     if (errorStatus === 403) {
+      if (prefilledStorageKey) {
+        sessionStorage.setItem('links:folder-key-invalid', '1');
+        router.push('/links');
+        return;
+      }
+
       setIsLocked(true);
       setNotFound(false);
 
@@ -93,6 +99,7 @@ function FolderViewContent() {
     hasAttemptedUnlock,
     hasShownWrongKeyToast,
     prefilledStorageKey,
+    router,
   ]);
 
   const handleUnlock = async (e: React.FormEvent) => {
