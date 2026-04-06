@@ -72,12 +72,7 @@ function FolderViewContent() {
     if (!hasTriedLoad || folderData?.folder) return;
 
     if (errorStatus === 403) {
-      if (prefilledStorageKey) {
-        sessionStorage.setItem('links:folder-key-invalid', '1');
-        router.replace('/links');
-        return;
-      }
-
+      // Stay on the page and show the locked folder form inline
       setIsLocked(true);
       setNotFound(false);
 
@@ -136,7 +131,7 @@ function FolderViewContent() {
     );
   }
 
-  if (isLocked) {
+  if (isLocked || (errorStatus === 403 && hasTriedLoad)) {
     return (
       <div className='min-h-screen flex items-center justify-center px-4'>
         <form
