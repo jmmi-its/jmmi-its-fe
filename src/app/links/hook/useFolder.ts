@@ -77,10 +77,12 @@ export const useGetFolderById = () => {
   const [data, setData] = useState<FolderDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const fetchFolder = useCallback(async (id: string, key?: string) => {
     setIsLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const query = key ? `?key=${encodeURIComponent(key)}` : '';
       const res = await api.get<ApiResponse<FolderDetailData>>(
@@ -89,12 +91,16 @@ export const useGetFolderById = () => {
       setData(res.data.data);
       return res.data.data;
     } catch (err: unknown) {
+      setData(null);
       let errorMessage = 'Failed to fetch folder';
-      if (err instanceof AxiosError && err.response?.data?.message) {
-        errorMessage =
-          typeof err.response.data.message === 'string'
-            ? err.response.data.message
-            : (Object.values(err.response.data.message)[0] as string[])[0];
+      if (err instanceof AxiosError) {
+        setErrorStatus(err.response?.status ?? null);
+        if (err.response?.data?.message) {
+          errorMessage =
+            typeof err.response.data.message === 'string'
+              ? err.response.data.message
+              : (Object.values(err.response.data.message)[0] as string[])[0];
+        }
       } else if (err instanceof Error) {
         errorMessage = err.message;
       }
@@ -104,7 +110,7 @@ export const useGetFolderById = () => {
     }
   }, []);
 
-  return { data, isLoading, error, fetchFolder };
+  return { data, isLoading, error, errorStatus, fetchFolder };
 };
 
 export const useCreateFolder = () => {

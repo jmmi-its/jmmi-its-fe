@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
@@ -23,27 +24,110 @@ export default function FolderCard({
   className,
 }: FolderCardProps) {
   const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [inputKey, setInputKey] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState('');
 
   const handleClick = () => {
+    if (isLocked) {
+      setInputKey('');
+      setErrorMessage('');
+      setIsModalOpen(true);
+      return;
+    }
+
+    router.push(`/links/view?id=${folderId}`);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setInputKey('');
+    setErrorMessage('');
+  };
+
+  const handleSubmitKey = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedKey = inputKey.trim();
+    if (!normalizedKey) {
+      setErrorMessage('Key folder wajib diisi');
+      return;
+    }
+
+    sessionStorage.setItem(`folder-key:${folderId}`, normalizedKey);
+    handleCloseModal();
     router.push(`/links/view?id=${folderId}`);
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        // Base styles
-        'w-full rounded-lg px-6 py-4 text-center font-medium text-white shadow-md transition-all duration-200',
-        'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]',
-        // Orange/terracotta background matching design
-        'bg-gradient-to-r from-brand-red-700 to-brand-red hover:from-brand-red-700 hover:to-brand-red-700',
-        className
+    <>
+      <button
+        onClick={handleClick}
+        className={cn(
+          // Base styles
+          'w-full rounded-lg px-6 py-4 text-center font-medium text-white shadow-md transition-all duration-200',
+          'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]',
+          // Orange/terracotta background matching design
+          'bg-gradient-to-r from-brand-red-700 to-brand-red hover:from-brand-red-700 hover:to-brand-red-700',
+          className
+        )}
+      >
+        <span className='inline-flex items-center gap-2 text-sm sm:text-base md:text-lg'>
+          <span>{title}</span>
+          {isLocked && <Lock className='h-4 w-4' aria-label='Terkunci' />}
+        </span>
+      </button>
+
+      {isModalOpen && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4'>
+          <form
+            onSubmit={handleSubmitKey}
+            className='w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl'
+          >
+            <h3 className='text-lg font-semibold text-slate-900'>Folder Terkunci</h3>
+            <p className='mt-1 text-sm text-slate-600'>
+              Masukkan key untuk membuka folder "{title}".
+            </p>
+
+            <div className='mt-4 space-y-1.5'>
+              <label htmlFor={`folder-key-${folderId}`} className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                Key Folder
+              </label>
+              <input
+                id={`folder-key-${folderId}`}
+                type='password'
+                value={inputKey}
+                onChange={(event) => {
+                  setInputKey(event.target.value);
+                  if (errorMessage) setErrorMessage('');
+                }}
+                placeholder='Masukkan key'
+                autoFocus
+                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+              />
+              {errorMessage && (
+                <p className='text-xs text-red-600'>{errorMessage}</p>
+              )}
+            </div>
+
+            <div className='mt-5 flex justify-end gap-2'>
+              <button
+                type='button'
+                onClick={handleCloseModal}
+                className='rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50'
+              >
+                Batal
+              </button>
+              <button
+                type='submit'
+                className='rounded-lg bg-gradient-to-r from-orange-600 to-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:from-orange-700 hover:to-orange-600'
+              >
+                Buka Folder
+              </button>
+            </div>
+          </form>
+        </div>
       )}
-    >
-      <span className='text-sm sm:text-base md:text-lg'>
-        {title}
-        {isLocked ? ' (Locked)' : ''}
-      </span>
-    </button>
+    </>
   );
 }

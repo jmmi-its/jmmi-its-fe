@@ -19,11 +19,13 @@ function FolderViewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const folderId = searchParams.get('id');
+  const [prefilledStorageKey, setPrefilledStorageKey] = React.useState<string | null>(null);
 
   const {
     data: folderData,
     isLoading: isLoadingData,
     error,
+    errorStatus,
     fetchFolder,
   } = useGetFolderById();
   const [notFound, setNotFound] = React.useState(false);
@@ -32,9 +34,20 @@ function FolderViewContent() {
   const [hasTriedLoad, setHasTriedLoad] = React.useState(false);
 
   React.useEffect(() => {
+    if (!folderId) return;
+
+    const storedKey = sessionStorage.getItem(`folder-key:${folderId}`);
+    if (!storedKey) return;
+
+    setPrefilledStorageKey(storedKey);
+    setFolderKey(storedKey);
+    sessionStorage.removeItem(`folder-key:${folderId}`);
+  }, [folderId]);
+
+  React.useEffect(() => {
     if (folderId) {
       const loadData = async () => {
-        const data = await fetchFolder(folderId);
+        const data = await fetchFolder(folderId, prefilledStorageKey ?? undefined);
         if (data) {
           setIsLocked(false);
           setNotFound(false);
@@ -43,12 +56,12 @@ function FolderViewContent() {
       };
       loadData();
     }
-  }, [folderId, fetchFolder]);
+  }, [folderId, fetchFolder, prefilledStorageKey]);
 
   React.useEffect(() => {
     if (!hasTriedLoad || folderData?.folder) return;
 
-    if (error === 'Folder key is required or invalid') {
+    if (errorStatus === 403) {
       setIsLocked(true);
       setNotFound(false);
       return;
@@ -57,7 +70,7 @@ function FolderViewContent() {
     if (error) {
       setNotFound(true);
     }
-  }, [hasTriedLoad, folderData, error]);
+  }, [hasTriedLoad, folderData, error, errorStatus]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();

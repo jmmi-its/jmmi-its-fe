@@ -117,6 +117,8 @@ export default function AdminLinksDashboardPage() {
   const [newCategoryTitle, setNewCategoryTitle] = useState('');
   const [newFolderTitle, setNewFolderTitle] = useState('');
   const [newFolderCategoryId, setNewFolderCategoryId] = useState('');
+  const [newFolderIsLocked, setNewFolderIsLocked] = useState(false);
+  const [newFolderAccessKey, setNewFolderAccessKey] = useState('');
   const [newSubheadingTitle, setNewSubheadingTitle] = useState('');
   const [newSubheadingFolderId, setNewSubheadingFolderId] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -131,6 +133,9 @@ export default function AdminLinksDashboardPage() {
   const [folderDraftTitle, setFolderDraftTitle] = useState('');
   const [folderDraftWeight, setFolderDraftWeight] = useState('0');
   const [folderDraftCategoryId, setFolderDraftCategoryId] = useState('');
+  const [folderDraftIsLocked, setFolderDraftIsLocked] = useState(false);
+  const [folderDraftWasLocked, setFolderDraftWasLocked] = useState(false);
+  const [folderDraftAccessKey, setFolderDraftAccessKey] = useState('');
   const [subheadingDraftTitle, setSubheadingDraftTitle] = useState('');
   const [subheadingDraftWeight, setSubheadingDraftWeight] = useState('0');
   const [subheadingDraftFolderId, setSubheadingDraftFolderId] = useState('');
@@ -200,6 +205,9 @@ export default function AdminLinksDashboardPage() {
     setFolderDraftTitle(item.title);
     setFolderDraftWeight(String(item.weight));
     setFolderDraftCategoryId(item.category_id ?? '');
+    setFolderDraftIsLocked(item.is_locked);
+    setFolderDraftWasLocked(item.is_locked);
+    setFolderDraftAccessKey('');
   };
 
   const openSubheadingEditor = (id: string) => {
@@ -221,6 +229,9 @@ export default function AdminLinksDashboardPage() {
     setFolderDraftTitle('');
     setFolderDraftWeight('0');
     setFolderDraftCategoryId('');
+    setFolderDraftIsLocked(false);
+    setFolderDraftWasLocked(false);
+    setFolderDraftAccessKey('');
     setSubheadingDraftTitle('');
     setSubheadingDraftWeight('0');
     setSubheadingDraftFolderId('');
@@ -232,14 +243,31 @@ export default function AdminLinksDashboardPage() {
     setNewCategoryTitle('');
     setNewFolderTitle('');
     setNewFolderCategoryId('');
+    setNewFolderIsLocked(false);
+    setNewFolderAccessKey('');
     setNewSubheadingTitle('');
     setNewSubheadingFolderId('');
   };
 
   useEffect(() => {
-    if (draftLinks.length === 0 || draftLinks.length !== sortedOriginalLinks.length) {
-      setDraftLinks(sortedOriginalLinks);
-    }
+    setDraftLinks((previous) => {
+      const hasSameOrderAndContent =
+        previous.length === sortedOriginalLinks.length &&
+        previous.every((item, index) => {
+          const nextItem = sortedOriginalLinks[index];
+          return (
+            item.link_id === nextItem?.link_id &&
+            item.title === nextItem?.title &&
+            item.link === nextItem?.link &&
+            item.category_id === nextItem?.category_id &&
+            item.folder_id === nextItem?.folder_id &&
+            item.subheading_id === nextItem?.subheading_id &&
+            item.weight === nextItem?.weight
+          );
+        });
+
+      return hasSameOrderAndContent ? previous : sortedOriginalLinks;
+    });
   }, [sortedOriginalLinks]);
 
   const formSubheadings = useMemo(() => {
@@ -414,12 +442,18 @@ export default function AdminLinksDashboardPage() {
       return;
     }
 
+    if (newFolderIsLocked && !newFolderAccessKey.trim()) {
+      showToast('Key folder wajib diisi saat folder dikunci', DANGER_TOAST);
+      return;
+    }
+
     setIsCreatingFolder(true);
     try {
       await api.post('/links/folders', {
         title: newFolderTitle.trim(),
         category_id: newFolderCategoryId,
         weight: folders.length + 1,
+        access_key: newFolderIsLocked ? newFolderAccessKey.trim() : null,
       });
       showToast('Folder berhasil ditambahkan', SUCCESS_TOAST);
       closeCreateModal();
@@ -496,13 +530,24 @@ export default function AdminLinksDashboardPage() {
 
     setIsStructureBusy(true);
     try {
-      const payload: Record<string, string | number> = {
+      if (folderDraftIsLocked && !folderDraftWasLocked && !folderDraftAccessKey.trim()) {
+        showToast('Key folder wajib diisi saat pertama kali mengunci folder', DANGER_TOAST);
+        return;
+      }
+
+      const payload: Record<string, string | number | null> = {
         title: folderDraftTitle.trim(),
         weight: Number.parseInt(folderDraftWeight, 10) || 0,
       };
 
       if (folderDraftCategoryId) {
         payload.category_id = folderDraftCategoryId;
+      }
+
+      if (!folderDraftIsLocked) {
+        payload.access_key = null;
+      } else if (folderDraftAccessKey.trim()) {
+        payload.access_key = folderDraftAccessKey.trim();
       }
 
       await api.put(`/links/folders/${editingFolderId}`, payload);
@@ -928,6 +973,11 @@ export default function AdminLinksDashboardPage() {
                                     <span className='rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800'>
                                       Folder
                                     </span>
+                                    {folder.is_locked && (
+                                      <span className='rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800'>
+                                        Terkunci
+                                      </span>
+                                    )}
                                     <p className='truncate text-sm font-semibold text-slate-900'>{folder.title}</p>
                                   </div>
                                 </div>
@@ -998,6 +1048,40 @@ export default function AdminLinksDashboardPage() {
                                       className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
                                       disabled={isStructureBusy}
                                     />
+                                  </div>
+                                  <div className='space-y-1.5'>
+                                    <label className='flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                                      <input
+                                        type='checkbox'
+                                        checked={folderDraftIsLocked}
+                                        onChange={(event) => {
+                                          const checked = event.target.checked;
+                                          setFolderDraftIsLocked(checked);
+                                          if (!checked) {
+                                            setFolderDraftAccessKey('');
+                                          }
+                                        }}
+                                        disabled={isStructureBusy}
+                                      />
+                                      Kunci Folder
+                                    </label>
+                                    {folderDraftIsLocked && (
+                                      <>
+                                        <input
+                                          type='text'
+                                          value={folderDraftAccessKey}
+                                          onChange={(event) => setFolderDraftAccessKey(event.target.value)}
+                                          placeholder={folderDraftWasLocked ? 'Isi untuk ganti key (kosong = tetap)' : 'Masukkan key folder'}
+                                          className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                                          disabled={isStructureBusy}
+                                        />
+                                        <p className='text-[11px] text-slate-500'>
+                                          {folderDraftWasLocked
+                                            ? 'Key lama tidak ditampilkan. Isi jika ingin mengganti key.'
+                                            : 'Folder baru dikunci wajib memiliki key.'}
+                                        </p>
+                                      </>
+                                    )}
                                   </div>
                                   <div className='flex flex-wrap gap-2'>
                                     <DashboardActionButton type='submit' variant='primary' disabled={isStructureBusy} className='justify-center'>
@@ -1226,6 +1310,11 @@ export default function AdminLinksDashboardPage() {
                                 <span className='rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800'>
                                   Folder
                                 </span>
+                                {folder.is_locked && (
+                                  <span className='rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800'>
+                                    Terkunci
+                                  </span>
+                                )}
                                 <p className='truncate text-sm font-semibold text-slate-900'>{folder.title}</p>
                               </div>
                             </div>
@@ -1388,6 +1477,32 @@ export default function AdminLinksDashboardPage() {
                     className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
                     disabled={categories.length === 0}
                   />
+                </div>
+
+                <div className='space-y-2'>
+                  <label className='flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    <input
+                      type='checkbox'
+                      checked={newFolderIsLocked}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setNewFolderIsLocked(checked);
+                        if (!checked) {
+                          setNewFolderAccessKey('');
+                        }
+                      }}
+                    />
+                    Kunci Folder
+                  </label>
+                  {newFolderIsLocked && (
+                    <input
+                      type='text'
+                      value={newFolderAccessKey}
+                      onChange={(event) => setNewFolderAccessKey(event.target.value)}
+                      placeholder='Masukkan key folder'
+                      className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                    />
+                  )}
                 </div>
 
                 <div className='flex justify-end gap-2'>
