@@ -21,6 +21,7 @@ function FolderViewContent() {
   const searchParams = useSearchParams();
   const folderId = searchParams.get('id');
   const [prefilledStorageKey, setPrefilledStorageKey] = React.useState<string | null>(null);
+  const [isReadyToFetch, setIsReadyToFetch] = React.useState(false);
 
   const {
     data: folderData,
@@ -40,11 +41,12 @@ function FolderViewContent() {
     if (!folderId) return;
 
     const storedKey = sessionStorage.getItem(`folder-key:${folderId}`);
-    if (!storedKey) return;
-
-    setPrefilledStorageKey(storedKey);
-    setFolderKey(storedKey);
-    sessionStorage.removeItem(`folder-key:${folderId}`);
+    if (storedKey) {
+      setPrefilledStorageKey(storedKey);
+      setFolderKey(storedKey);
+      sessionStorage.removeItem(`folder-key:${folderId}`);
+    }
+    setIsReadyToFetch(true);
   }, [folderId]);
 
   React.useEffect(() => {
@@ -53,7 +55,7 @@ function FolderViewContent() {
   }, [folderId]);
 
   React.useEffect(() => {
-    if (folderId) {
+    if (folderId && isReadyToFetch) {
       const loadData = async () => {
         const data = await fetchFolder(folderId, prefilledStorageKey ?? undefined);
         if (data) {
@@ -64,7 +66,7 @@ function FolderViewContent() {
       };
       loadData();
     }
-  }, [folderId, fetchFolder, prefilledStorageKey]);
+  }, [folderId, fetchFolder, prefilledStorageKey, isReadyToFetch]);
 
   React.useEffect(() => {
     if (!hasTriedLoad || folderData?.folder) return;
@@ -72,7 +74,7 @@ function FolderViewContent() {
     if (errorStatus === 403) {
       if (prefilledStorageKey) {
         sessionStorage.setItem('links:folder-key-invalid', '1');
-        router.push('/links');
+        router.replace('/links');
         return;
       }
 
