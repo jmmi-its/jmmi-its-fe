@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, ArrowLeft, ExternalLink, GripVertical, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 import Button from '@/components/buttons/Button';
 import { DANGER_TOAST, showToast, SUCCESS_TOAST } from '@/components/Toast';
@@ -14,9 +14,10 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Link } from '@/types/entities/links';
 
-const ALL_FOLDER_OPTION = '__all__';
 const GENERAL_FOLDER_OPTION = '__general__';
 const NO_SUBHEADING_OPTION = '__no_subheading__';
+const GENERAL_CATEGORY_OPTION = '__general_category__';
+const UNCATEGORIZED_CATEGORY_OPTION = '__uncategorized_category__';
 
 type LinkFormState = {
   title: string;
@@ -96,19 +97,15 @@ export default function AdminLinksDashboardPage() {
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const { data: categories = [] } = useGetCategories();
-  const { data: links, isLoading: isLoadingLinks } = useGetLinks();
+  const { data: links } = useGetLinks();
   const { data: folders = [] } = useGetFolders();
   const { data: subheadings = [] } = useGetSubheadings();
 
   const [draftLinks, setDraftLinks] = useState<Link[]>([]);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string>(ALL_FOLDER_OPTION);
-  const [selectedSubheading, setSelectedSubheading] = useState<string>(ALL_FOLDER_OPTION);
-  const [search, setSearch] = useState('');
   const [formState, setFormState] = useState<LinkFormState>(EMPTY_FORM);
+  const [formCategoryId, setFormCategoryId] = useState<string>(GENERAL_CATEGORY_OPTION);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(0);
   const [newCategoryTitle, setNewCategoryTitle] = useState('');
   const [newFolderTitle, setNewFolderTitle] = useState('');
@@ -118,29 +115,119 @@ export default function AdminLinksDashboardPage() {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [isCreatingSubheading, setIsCreatingSubheading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
+  const [activeCreateModal, setActiveCreateModal] = useState<'category' | 'folder' | 'subheading' | 'link' | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editingSubheadingId, setEditingSubheadingId] = useState<string | null>(null);
+  const [categoryDraftTitle, setCategoryDraftTitle] = useState('');
+  const [categoryDraftWeight, setCategoryDraftWeight] = useState('0');
+  const [folderDraftTitle, setFolderDraftTitle] = useState('');
+  const [folderDraftWeight, setFolderDraftWeight] = useState('0');
+  const [folderDraftCategoryId, setFolderDraftCategoryId] = useState('');
+  const [subheadingDraftTitle, setSubheadingDraftTitle] = useState('');
+  const [subheadingDraftWeight, setSubheadingDraftWeight] = useState('0');
+  const [subheadingDraftFolderId, setSubheadingDraftFolderId] = useState('');
+  const [isStructureBusy, setIsStructureBusy] = useState(false);
   const sortedOriginalLinks = useMemo(() => {
     return [...(links ?? [])].sort((a, b) => b.weight - a.weight);
   }, [links]);
 
   const previewKey = useMemo(() => {
     const linkStamp = sortedOriginalLinks
-      .map((item) => `${item.link_id}:${item.weight}:${item.timestamp}`)
+      .map(
+        (item) =>
+          `${item.link_id}:${item.title}:${item.link}:${item.folder_id ?? ''}:${item.subheading_id ?? ''}:${item.weight}`
+      )
       .join('|');
     const categoryStamp = categories
-      .map((item) => `${item.category_id}:${item.timestamp}`)
+      .map((item) => `${item.category_id}:${item.title}:${item.weight}`)
       .join('|');
     const folderStamp = folders
-      .map((item) => `${item.folder_id}:${item.timestamp}`)
+      .map(
+        (item) => `${item.folder_id}:${item.title}:${item.category_id ?? ''}:${item.weight}`
+      )
       .join('|');
     const subheadingStamp = subheadings
-      .map((item) => `${item.subheading_id}:${item.timestamp}`)
+      .map((item) => `${item.subheading_id}:${item.title}:${item.folder_id}:${item.weight}`)
       .join('|');
 
     return [linkStamp, categoryStamp, folderStamp, subheadingStamp, previewVersion].join('::');
   }, [categories, folders, previewVersion, sortedOriginalLinks, subheadings]);
+
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => b.weight - a.weight);
+  }, [categories]);
+
+  const sortedFolders = useMemo(() => {
+    return [...folders].sort((a, b) => b.weight - a.weight);
+  }, [folders]);
+
+  const sortedSubheadings = useMemo(() => {
+    return [...subheadings].sort((a, b) => b.weight - a.weight);
+  }, [subheadings]);
+
+  const refreshStructureData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      queryClient.invalidateQueries({ queryKey: ['folders'] }),
+      queryClient.invalidateQueries({ queryKey: ['subheadings'] }),
+      queryClient.invalidateQueries({ queryKey: ['links-homepage'] }),
+    ]);
+    setPreviewVersion((value) => value + 1);
+  };
+
+  const openCategoryEditor = (id: string) => {
+    const item = categories.find((category) => category.category_id === id);
+    if (!item) return;
+
+    setEditingCategoryId(id);
+    setCategoryDraftTitle(item.title);
+    setCategoryDraftWeight(String(item.weight));
+  };
+
+  const openFolderEditor = (id: string) => {
+    const item = folders.find((folder) => folder.folder_id === id);
+    if (!item) return;
+
+    setEditingFolderId(id);
+    setFolderDraftTitle(item.title);
+    setFolderDraftWeight(String(item.weight));
+    setFolderDraftCategoryId(item.category_id ?? '');
+  };
+
+  const openSubheadingEditor = (id: string) => {
+    const item = subheadings.find((subheading) => subheading.subheading_id === id);
+    if (!item) return;
+
+    setEditingSubheadingId(id);
+    setSubheadingDraftTitle(item.title);
+    setSubheadingDraftWeight(String(item.weight));
+    setSubheadingDraftFolderId(item.folder_id);
+  };
+
+  const resetStructureEditors = () => {
+    setEditingCategoryId(null);
+    setEditingFolderId(null);
+    setEditingSubheadingId(null);
+    setCategoryDraftTitle('');
+    setCategoryDraftWeight('0');
+    setFolderDraftTitle('');
+    setFolderDraftWeight('0');
+    setFolderDraftCategoryId('');
+    setSubheadingDraftTitle('');
+    setSubheadingDraftWeight('0');
+    setSubheadingDraftFolderId('');
+  };
+
+  const closeCreateModal = () => {
+    setActiveCreateModal(null);
+    resetForm();
+    setNewCategoryTitle('');
+    setNewFolderTitle('');
+    setNewFolderCategoryId('');
+    setNewSubheadingTitle('');
+    setNewSubheadingFolderId('');
+  };
 
   useEffect(() => {
     if (draftLinks.length === 0 || draftLinks.length !== sortedOriginalLinks.length) {
@@ -148,96 +235,54 @@ export default function AdminLinksDashboardPage() {
     }
   }, [sortedOriginalLinks]);
 
-  const filteredSubheadings = useMemo(() => {
-    if (selectedFolder === ALL_FOLDER_OPTION || selectedFolder === GENERAL_FOLDER_OPTION) {
-      return [];
-    }
-
-    return subheadings.filter((subheading) => subheading.folder_id === selectedFolder);
-  }, [selectedFolder, subheadings]);
-
   const formSubheadings = useMemo(() => {
-    if (formState.folder_id === GENERAL_FOLDER_OPTION) {
+    if (!formState.folder_id || formState.folder_id === GENERAL_FOLDER_OPTION) {
       return [];
     }
 
     return subheadings.filter((subheading) => subheading.folder_id === formState.folder_id);
   }, [formState.folder_id, subheadings]);
 
-  const visibleLinks = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+  const uncategorizedFolders = useMemo(() => {
+    return folders.filter((folder) => !folder.category_id);
+  }, [folders]);
 
-    return draftLinks.filter((link) => {
-      const matchFolder =
-        selectedFolder === ALL_FOLDER_OPTION
-          ? true
-          : selectedFolder === GENERAL_FOLDER_OPTION
-          ? link.folder_id === null
-          : link.folder_id === selectedFolder;
-
-      const matchSubheading =
-        selectedSubheading === ALL_FOLDER_OPTION
-          ? true
-          : selectedSubheading === NO_SUBHEADING_OPTION
-          ? link.subheading_id === null
-          : link.subheading_id === selectedSubheading;
-
-      const matchSearch =
-        keyword.length === 0 ||
-        link.title.toLowerCase().includes(keyword) ||
-        link.link.toLowerCase().includes(keyword);
-
-      return matchFolder && matchSubheading && matchSearch;
-    });
-  }, [draftLinks, search, selectedFolder, selectedSubheading]);
-
-  const isOrderDirty = useMemo(() => {
-    if (draftLinks.length !== sortedOriginalLinks.length) {
-      return true;
+  const formCategoryFolders = useMemo(() => {
+    if (formCategoryId === GENERAL_CATEGORY_OPTION) {
+      return [];
     }
 
-    for (let i = 0; i < draftLinks.length; i += 1) {
-      if (draftLinks[i]?.link_id !== sortedOriginalLinks[i]?.link_id) {
-        return true;
-      }
+    if (formCategoryId === UNCATEGORIZED_CATEGORY_OPTION) {
+      return uncategorizedFolders;
     }
 
-    return false;
-  }, [draftLinks, sortedOriginalLinks]);
-
-  const totalPages = Math.ceil(visibleLinks.length / itemsPerPage);
-  const paginatedLinks = visibleLinks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedFolder, selectedSubheading]);
-
-  const getFolderLabel = (folderId: string | null) => {
-    if (!folderId) return 'Umum';
-    return folders.find((folder) => folder.folder_id === folderId)?.title || 'Folder tidak ditemukan';
-  };
-
-  const getSubheadingLabel = (subheadingId: string | null) => {
-    if (!subheadingId) return 'Tanpa subheading';
-    return (
-      subheadings.find((subheading) => subheading.subheading_id === subheadingId)?.title ||
-      'Subheading tidak ditemukan'
-    );
-  };
+    return folders.filter((folder) => folder.category_id === formCategoryId);
+  }, [folders, formCategoryId, uncategorizedFolders]);
 
   const resetForm = () => {
     setFormState(EMPTY_FORM);
+    setFormCategoryId(GENERAL_CATEGORY_OPTION);
     setEditingId(null);
   };
 
   const handleOpenEdit = (item: Link) => {
+    const selectedFolder = item.folder_id
+      ? folders.find((folder) => folder.folder_id === item.folder_id)
+      : null;
+
     setEditingId(item.link_id);
+    setFormCategoryId(
+      item.folder_id
+        ? selectedFolder?.category_id ?? UNCATEGORIZED_CATEGORY_OPTION
+        : GENERAL_CATEGORY_OPTION
+    );
     setFormState({
       title: item.title,
       link: item.link,
       folder_id: item.folder_id ?? GENERAL_FOLDER_OPTION,
       subheading_id: item.subheading_id ?? NO_SUBHEADING_OPTION,
     });
+    setActiveCreateModal('link');
   };
 
   const handleDelete = async (id: string) => {
@@ -269,6 +314,11 @@ export default function AdminLinksDashboardPage() {
       return;
     }
 
+    if (formCategoryId !== GENERAL_CATEGORY_OPTION && !formState.folder_id) {
+      showToast('Pilih folder terlebih dahulu', DANGER_TOAST);
+      return;
+    }
+
     setIsSubmitting(true);
 
     const payload = {
@@ -294,73 +344,13 @@ export default function AdminLinksDashboardPage() {
         showToast('Link berhasil ditambahkan', SUCCESS_TOAST);
       }
 
-      resetForm();
+      closeCreateModal();
       await queryClient.invalidateQueries({ queryKey: ['links'] });
       await queryClient.invalidateQueries({ queryKey: ['links-homepage'] });
     } catch {
       showToast('Gagal menyimpan link', DANGER_TOAST);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const reorderVisibleLinks = (fromId: string, toId: string) => {
-    const currentVisible = [...visibleLinks];
-    const fromIndex = currentVisible.findIndex((item) => item.link_id === fromId);
-    const toIndex = currentVisible.findIndex((item) => item.link_id === toId);
-    const fromItem = currentVisible[fromIndex];
-    const toItem = currentVisible[toIndex];
-
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
-      return;
-    }
-
-    if (fromItem?.folder_id !== toItem?.folder_id) {
-      showToast('Urutan hanya bisa diubah di dalam folder yang sama', DANGER_TOAST);
-      return;
-    }
-
-    const [moved] = currentVisible.splice(fromIndex, 1);
-    currentVisible.splice(toIndex, 0, moved);
-
-    const visibleIds = new Set(visibleLinks.map((item) => item.link_id));
-    let visibleCursor = 0;
-
-    const merged = draftLinks.map((item) => {
-      if (!visibleIds.has(item.link_id)) {
-        return item;
-      }
-
-      const next = currentVisible[visibleCursor];
-      visibleCursor += 1;
-      return next;
-    });
-
-    setDraftLinks(merged);
-  };
-
-  const handleSaveOrder = async () => {
-    if (!isOrderDirty) return;
-
-    setIsSavingOrder(true);
-
-    try {
-      const total = draftLinks.length;
-      await Promise.all(
-        draftLinks.map((item, index) =>
-          api.put(`/links/items/${item.link_id}`, {
-            weight: total - index,
-          })
-        )
-      );
-
-      showToast('Urutan link berhasil disimpan', SUCCESS_TOAST);
-      await queryClient.invalidateQueries({ queryKey: ['links'] });
-      await queryClient.invalidateQueries({ queryKey: ['links-homepage'] });
-    } catch {
-      showToast('Gagal menyimpan urutan link', DANGER_TOAST);
-    } finally {
-      setIsSavingOrder(false);
     }
   };
 
@@ -385,9 +375,8 @@ export default function AdminLinksDashboardPage() {
         weight: categories.length + 1,
       });
       showToast('Kategori berhasil ditambahkan', SUCCESS_TOAST);
-      setNewCategoryTitle('');
-      await queryClient.invalidateQueries({ queryKey: ['categories'] });
-      await queryClient.invalidateQueries({ queryKey: ['links-homepage'] });
+      closeCreateModal();
+      await refreshStructureData();
     } catch {
       showToast('Gagal menambahkan kategori', DANGER_TOAST);
     } finally {
@@ -411,9 +400,8 @@ export default function AdminLinksDashboardPage() {
         weight: folders.length + 1,
       });
       showToast('Folder berhasil ditambahkan', SUCCESS_TOAST);
-      setNewFolderTitle('');
-      await queryClient.invalidateQueries({ queryKey: ['folders'] });
-      await queryClient.invalidateQueries({ queryKey: ['links-homepage'] });
+      closeCreateModal();
+      await refreshStructureData();
     } catch {
       showToast('Gagal menambahkan folder', DANGER_TOAST);
     } finally {
@@ -441,12 +429,225 @@ export default function AdminLinksDashboardPage() {
         weight: selectedFolderSubheadings.length + 1,
       });
       showToast('Subheading berhasil ditambahkan', SUCCESS_TOAST);
-      setNewSubheadingTitle('');
-      await queryClient.invalidateQueries({ queryKey: ['subheadings'] });
+      closeCreateModal();
+      await refreshStructureData();
     } catch {
       showToast('Gagal menambahkan subheading', DANGER_TOAST);
     } finally {
       setIsCreatingSubheading(false);
+    }
+  };
+
+  const handleUpdateCategory = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!editingCategoryId) return;
+    if (!categoryDraftTitle.trim()) {
+      showToast('Nama kategori wajib diisi', DANGER_TOAST);
+      return;
+    }
+
+    setIsStructureBusy(true);
+    try {
+      await api.put(`/links/categories/${editingCategoryId}`, {
+        title: categoryDraftTitle.trim(),
+        weight: Number.parseInt(categoryDraftWeight, 10) || 0,
+      });
+      showToast('Kategori berhasil diperbarui', SUCCESS_TOAST);
+      resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui kategori', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleUpdateFolder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!editingFolderId) return;
+    if (!folderDraftTitle.trim()) {
+      showToast('Nama folder wajib diisi', DANGER_TOAST);
+      return;
+    }
+
+    setIsStructureBusy(true);
+    try {
+      const payload: Record<string, string | number> = {
+        title: folderDraftTitle.trim(),
+        weight: Number.parseInt(folderDraftWeight, 10) || 0,
+      };
+
+      if (folderDraftCategoryId) {
+        payload.category_id = folderDraftCategoryId;
+      }
+
+      await api.put(`/links/folders/${editingFolderId}`, payload);
+      showToast('Folder berhasil diperbarui', SUCCESS_TOAST);
+      resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui folder', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleUpdateSubheading = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!editingSubheadingId) return;
+    if (!subheadingDraftTitle.trim() || !subheadingDraftFolderId) {
+      showToast('Nama subheading dan folder wajib diisi', DANGER_TOAST);
+      return;
+    }
+
+    setIsStructureBusy(true);
+    try {
+      await api.put(`/links/subheadings/${editingSubheadingId}`, {
+        title: subheadingDraftTitle.trim(),
+        folder_id: subheadingDraftFolderId,
+        weight: Number.parseInt(subheadingDraftWeight, 10) || 0,
+      });
+      showToast('Subheading berhasil diperbarui', SUCCESS_TOAST);
+      resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui subheading', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const shouldDelete = window.confirm('Hapus kategori ini? Folder di dalamnya juga akan ikut terhapus.');
+    if (!shouldDelete) return;
+
+    setIsStructureBusy(true);
+    try {
+      await api.delete(`/links/categories/${id}`);
+      showToast('Kategori berhasil dihapus', SUCCESS_TOAST);
+      if (editingCategoryId === id) resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal menghapus kategori', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleDeleteFolder = async (id: string) => {
+    const shouldDelete = window.confirm('Hapus folder ini? Subheading dan link di dalamnya juga akan ikut terhapus.');
+    if (!shouldDelete) return;
+
+    setIsStructureBusy(true);
+    try {
+      await api.delete(`/links/folders/${id}`);
+      showToast('Folder berhasil dihapus', SUCCESS_TOAST);
+      if (editingFolderId === id) resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal menghapus folder', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleDeleteSubheading = async (id: string) => {
+    const shouldDelete = window.confirm('Hapus subheading ini? Link di dalamnya juga akan ikut terhapus.');
+    if (!shouldDelete) return;
+
+    setIsStructureBusy(true);
+    try {
+      await api.delete(`/links/subheadings/${id}`);
+      showToast('Subheading berhasil dihapus', SUCCESS_TOAST);
+      if (editingSubheadingId === id) resetStructureEditors();
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal menghapus subheading', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleReorderCategory = async (categoryId: string, direction: 'up' | 'down') => {
+    const ordered = [...sortedCategories];
+    const index = ordered.findIndex((item) => item.category_id === categoryId);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const current = ordered[index];
+    const target = ordered[targetIndex];
+
+    if (!current || !target) return;
+
+    setIsStructureBusy(true);
+    try {
+      await Promise.all([
+        api.put(`/links/categories/${current.category_id}`, { weight: target.weight }),
+        api.put(`/links/categories/${target.category_id}`, { weight: current.weight }),
+      ]);
+      showToast('Urutan kategori berhasil diperbarui', SUCCESS_TOAST);
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui urutan kategori', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleReorderFolder = async (folderId: string, direction: 'up' | 'down') => {
+    const current = sortedFolders.find((item) => item.folder_id === folderId);
+    if (!current) return;
+
+    const siblingFolders = sortedFolders
+      .filter((item) => item.category_id === current.category_id)
+      .sort((a, b) => b.weight - a.weight);
+    const index = siblingFolders.findIndex((item) => item.folder_id === folderId);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const target = siblingFolders[targetIndex];
+
+    if (!target) return;
+
+    setIsStructureBusy(true);
+    try {
+      await Promise.all([
+        api.put(`/links/folders/${current.folder_id}`, { weight: target.weight }),
+        api.put(`/links/folders/${target.folder_id}`, { weight: current.weight }),
+      ]);
+      showToast('Urutan folder berhasil diperbarui', SUCCESS_TOAST);
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui urutan folder', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
+    }
+  };
+
+  const handleReorderSubheading = async (subheadingId: string, direction: 'up' | 'down') => {
+    const current = sortedSubheadings.find((item) => item.subheading_id === subheadingId);
+    if (!current) return;
+
+    const siblingSubheadings = sortedSubheadings
+      .filter((item) => item.folder_id === current.folder_id)
+      .sort((a, b) => b.weight - a.weight);
+    const index = siblingSubheadings.findIndex((item) => item.subheading_id === subheadingId);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const target = siblingSubheadings[targetIndex];
+
+    if (!target) return;
+
+    setIsStructureBusy(true);
+    try {
+      await Promise.all([
+        api.put(`/links/subheadings/${current.subheading_id}`, { weight: target.weight }),
+        api.put(`/links/subheadings/${target.subheading_id}`, { weight: current.weight }),
+      ]);
+      showToast('Urutan subheading berhasil diperbarui', SUCCESS_TOAST);
+      await refreshStructureData();
+    } catch {
+      showToast('Gagal memperbarui urutan subheading', DANGER_TOAST);
+    } finally {
+      setIsStructureBusy(false);
     }
   };
 
@@ -462,396 +663,889 @@ export default function AdminLinksDashboardPage() {
       </div>
 
       <section className='rounded-2xl bg-white p-5 shadow'>
-        <div className='mb-4'>
-          <h2 className='text-lg font-semibold text-slate-900'>Pengaturan Cepat Struktur Link</h2>
-          <p className='text-sm text-slate-500'>
-            Tambahkan kategori, folder, dan subheading langsung dari satu halaman.
-          </p>
+        <div className='mb-4 flex flex-wrap items-start justify-between gap-3'>
+          <div>
+            <h2 className='text-lg font-semibold text-slate-900'>Kelola Struktur Data</h2>
+            <p className='text-sm text-slate-500'>
+              Semua pengeditan, pemindahan parent, dan pengurutan dilakukan langsung di halaman ini.
+            </p>
+          </div>
+          <div className='flex flex-wrap items-center justify-end gap-2'>
+            <DashboardActionButton
+              onClick={() => setActiveCreateModal('category')}
+              leftIcon={Plus}
+              className='justify-center border-brand-green-200 bg-white text-brand-green-700 hover:bg-brand-green-50'
+            >
+              Tambah Kategori
+            </DashboardActionButton>
+            <DashboardActionButton
+              onClick={() => setActiveCreateModal('folder')}
+              leftIcon={Plus}
+              disabled={categories.length === 0}
+              className='justify-center border-brand-green-200 bg-white text-brand-green-700 hover:bg-brand-green-50'
+            >
+              Tambah Folder
+            </DashboardActionButton>
+            <DashboardActionButton
+              onClick={() => setActiveCreateModal('subheading')}
+              leftIcon={Plus}
+              disabled={folders.length === 0}
+              className='justify-center border-brand-green-200 bg-white text-brand-green-700 hover:bg-brand-green-50'
+            >
+              Tambah Subheading
+            </DashboardActionButton>
+            <DashboardActionButton
+              onClick={() => {
+                resetForm();
+                setActiveCreateModal('link');
+              }}
+              leftIcon={Plus}
+              className='justify-center border-brand-green-200 bg-white text-brand-green-700 hover:bg-brand-green-50'
+            >
+              Tambah Link
+            </DashboardActionButton>
+            {isStructureBusy && (
+              <div className='rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600'>
+                Menyimpan perubahan...
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className='grid gap-4 lg:grid-cols-3'>
-          <form onSubmit={handleCreateCategory} className='rounded-xl border border-slate-200 p-4'>
-            <h3 className='text-sm font-semibold text-slate-900'>Tambah Kategori</h3>
-            <p className='mt-1 text-xs text-slate-500'>
-              Kategori dipakai untuk mengelompokkan folder agar lebih rapi pada halaman awal.
-            </p>
+        {(categories.length === 0 || folders.length === 0) && (
+          <div className='mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900'>
+            {categories.length === 0
+              ? 'Tambahkan kategori terlebih dahulu sebelum membuat folder.'
+              : 'Tambahkan folder terlebih dahulu sebelum membuat subheading.'}
+          </div>
+        )}
 
-            <div className='mt-4 space-y-2'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
-                Nama Kategori
-              </label>
-              <input
-                type='text'
-                value={newCategoryTitle}
-                onChange={(event) => setNewCategoryTitle(event.target.value)}
-                placeholder='Contoh: Akademik'
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              />
+        <div className='max-h-[980px] space-y-4 overflow-y-auto pr-1'>
+          {sortedCategories.length === 0 && uncategorizedFolders.length === 0 && sortedOriginalLinks.length === 0 ? (
+            <div className='rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500'>
+              Belum ada data struktur link.
             </div>
+          ) : (
+            <>
+              <div className='rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm'>
+                <div className='mb-3 flex items-start justify-between gap-3'>
+                  <div>
+                    <p className='text-sm font-semibold text-slate-900'>Link Umum</p>
+                    <p className='text-xs text-slate-500'>Link yang tidak berada dalam folder.</p>
+                  </div>
+                  <span className='rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200'>
+                    {sortedOriginalLinks.filter((link) => !link.folder_id).length}
+                  </span>
+                </div>
 
-            <DashboardActionButton
-              type='submit'
-              variant='outline'
-              disabled={isCreatingCategory}
-              className='mt-4 w-full justify-center'
-            >
-              {isCreatingCategory ? 'Menyimpan...' : 'Simpan Kategori'}
-            </DashboardActionButton>
-          </form>
+                <div className='space-y-2'>
+                  {sortedOriginalLinks.filter((link) => !link.folder_id).length === 0 ? (
+                    <p className='text-xs text-slate-500'>Belum ada link umum.</p>
+                  ) : (
+                    sortedOriginalLinks
+                      .filter((link) => !link.folder_id)
+                      .map((link) => (
+                        <div key={link.link_id} className='rounded-lg border border-slate-200 bg-white px-3 py-2'>
+                          <div className='flex flex-wrap items-center justify-between gap-2'>
+                            <div className='min-w-0'>
+                              <p className='truncate text-xs font-semibold text-slate-900'>{link.title}</p>
+                              <p className='truncate text-[11px] text-slate-500'>{link.link}</p>
+                            </div>
+                            <div className='flex gap-2'>
+                              <DashboardActionButton
+                                onClick={() => handleOpenEdit(link)}
+                                variant='outline'
+                                className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                              >
+                                Ubah
+                              </DashboardActionButton>
+                              <DashboardActionButton
+                                onClick={() => handleDelete(link.link_id)}
+                                variant='ghost'
+                                className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                              >
+                                Hapus
+                              </DashboardActionButton>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
 
-          <form onSubmit={handleCreateFolder} className='rounded-xl border border-slate-200 p-4'>
-            <h3 className='text-sm font-semibold text-slate-900'>Tambah Folder</h3>
-            <p className='mt-1 text-xs text-slate-500'>
-              Folder menyimpan kumpulan link di dalam kategori tertentu.
-            </p>
+              {sortedCategories.map((category, categoryIndex) => {
+                const categoryFolders = sortedFolders.filter(
+                  (folder) => folder.category_id === category.category_id
+                );
 
-            <div className='mt-4 space-y-2'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
-                Kategori
-              </label>
-              <select
-                value={newFolderCategoryId}
-                onChange={(event) => setNewFolderCategoryId(event.target.value)}
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              >
-                <option value=''>Pilih kategori</option>
-                {categories.map((category) => (
-                  <option key={category.category_id} value={category.category_id}>
-                    {category.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+                return (
+                  <div key={category.category_id} className='rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm'>
+                    <div className='flex flex-wrap items-start justify-between gap-3'>
+                      <div className='min-w-0'>
+                        <div className='flex items-center gap-2'>
+                          <span className='rounded-full bg-brand-green-700 px-2 py-0.5 text-[11px] font-semibold text-white'>
+                            Kategori
+                          </span>
+                          <p className='truncate text-base font-semibold text-slate-900'>{category.title}</p>
+                        </div>
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        <DashboardActionButton
+                          onClick={() => handleReorderCategory(category.category_id, 'up')}
+                          disabled={isStructureBusy || categoryIndex === 0}
+                          variant='ghost'
+                          className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        >
+                          Naik
+                        </DashboardActionButton>
+                        <DashboardActionButton
+                          onClick={() => handleReorderCategory(category.category_id, 'down')}
+                          disabled={isStructureBusy || categoryIndex === sortedCategories.length - 1}
+                          variant='ghost'
+                          className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        >
+                          Turun
+                        </DashboardActionButton>
+                        <DashboardActionButton
+                          onClick={() =>
+                            editingCategoryId === category.category_id
+                              ? resetStructureEditors()
+                              : openCategoryEditor(category.category_id)
+                          }
+                          disabled={isStructureBusy}
+                          variant='outline'
+                          className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                        >
+                          {editingCategoryId === category.category_id ? 'Tutup' : 'Ubah'}
+                        </DashboardActionButton>
+                        <DashboardActionButton
+                          onClick={() => handleDeleteCategory(category.category_id)}
+                          disabled={isStructureBusy}
+                          variant='ghost'
+                          className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                        >
+                          Hapus
+                        </DashboardActionButton>
+                      </div>
+                    </div>
 
-            <div className='mt-3 space-y-2'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
-                Nama Folder
-              </label>
-              <input
-                type='text'
-                value={newFolderTitle}
-                onChange={(event) => setNewFolderTitle(event.target.value)}
-                placeholder='Contoh: Departemen Media'
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-                disabled={categories.length === 0}
-              />
-            </div>
+                    {editingCategoryId === category.category_id && (
+                      <form onSubmit={handleUpdateCategory} className='mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-3'>
+                        <div className='space-y-1.5'>
+                          <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Nama Kategori</label>
+                          <input
+                            type='text'
+                            value={categoryDraftTitle}
+                            onChange={(event) => setCategoryDraftTitle(event.target.value)}
+                            className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                            disabled={isStructureBusy}
+                          />
+                        </div>
+                        <div className='flex flex-wrap gap-2'>
+                          <DashboardActionButton type='submit' variant='primary' disabled={isStructureBusy} className='justify-center'>
+                            Simpan
+                          </DashboardActionButton>
+                          <DashboardActionButton
+                            type='button'
+                            variant='ghost'
+                            onClick={resetStructureEditors}
+                            disabled={isStructureBusy}
+                            className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          >
+                            Batal
+                          </DashboardActionButton>
+                        </div>
+                      </form>
+                    )}
 
-            <DashboardActionButton
-              type='submit'
-              variant='outline'
-              disabled={isCreatingFolder || categories.length === 0}
-              className='mt-4 w-full justify-center'
-            >
-              {isCreatingFolder ? 'Menyimpan...' : 'Simpan Folder'}
-            </DashboardActionButton>
-          </form>
+                    <div className='mt-4 space-y-3 border-l-2 border-slate-200 pl-4'>
+                      {categoryFolders.length === 0 ? (
+                        <div className='rounded-xl border border-dashed border-slate-300 bg-white p-3 text-xs text-slate-500'>
+                          Belum ada folder dalam kategori ini.
+                        </div>
+                      ) : (
+                        categoryFolders.map((folder, folderIndex) => {
+                          const folderSubheadings = sortedSubheadings.filter(
+                            (subheading) => subheading.folder_id === folder.folder_id
+                          );
+                          const directLinks = sortedOriginalLinks.filter(
+                            (link) => link.folder_id === folder.folder_id && !link.subheading_id
+                          );
 
-          <form onSubmit={handleCreateSubheading} className='rounded-xl border border-slate-200 p-4'>
-            <h3 className='text-sm font-semibold text-slate-900'>Tambah Subheading</h3>
-            <p className='mt-1 text-xs text-slate-500'>
-              Subheading membantu memecah link dalam folder jadi beberapa bagian.
-            </p>
+                          return (
+                            <div key={folder.folder_id} className='rounded-2xl border border-slate-200 bg-white p-4'>
+                              <div className='flex flex-wrap items-start justify-between gap-3'>
+                                <div className='min-w-0'>
+                                  <div className='flex items-center gap-2'>
+                                    <span className='rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800'>
+                                      Folder
+                                    </span>
+                                    <p className='truncate text-sm font-semibold text-slate-900'>{folder.title}</p>
+                                  </div>
+                                </div>
+                                <div className='flex flex-wrap gap-2'>
+                                  <DashboardActionButton
+                                    onClick={() => handleReorderFolder(folder.folder_id, 'up')}
+                                    disabled={isStructureBusy || folderIndex === 0}
+                                    variant='ghost'
+                                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                  >
+                                    Naik
+                                  </DashboardActionButton>
+                                  <DashboardActionButton
+                                    onClick={() => handleReorderFolder(folder.folder_id, 'down')}
+                                    disabled={isStructureBusy || folderIndex === categoryFolders.length - 1}
+                                    variant='ghost'
+                                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                  >
+                                    Turun
+                                  </DashboardActionButton>
+                                  <DashboardActionButton
+                                    onClick={() =>
+                                      editingFolderId === folder.folder_id
+                                        ? resetStructureEditors()
+                                        : openFolderEditor(folder.folder_id)
+                                    }
+                                    disabled={isStructureBusy}
+                                    variant='outline'
+                                    className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                                  >
+                                    {editingFolderId === folder.folder_id ? 'Tutup' : 'Ubah'}
+                                  </DashboardActionButton>
+                                  <DashboardActionButton
+                                    onClick={() => handleDeleteFolder(folder.folder_id)}
+                                    disabled={isStructureBusy}
+                                    variant='ghost'
+                                    className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                                  >
+                                    Hapus
+                                  </DashboardActionButton>
+                                </div>
+                              </div>
 
-            <div className='mt-4 space-y-2'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
-                Folder
-              </label>
-              <select
-                value={newSubheadingFolderId}
-                onChange={(event) => setNewSubheadingFolderId(event.target.value)}
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              >
-                <option value=''>Pilih folder</option>
-                {folders.map((folder) => (
-                  <option key={folder.folder_id} value={folder.folder_id}>
-                    {folder.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+                              {editingFolderId === folder.folder_id && (
+                                <form onSubmit={handleUpdateFolder} className='mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                                  <div className='space-y-1.5'>
+                                    <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Kategori</label>
+                                    <select
+                                      value={folderDraftCategoryId}
+                                      onChange={(event) => setFolderDraftCategoryId(event.target.value)}
+                                      className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                                      disabled={isStructureBusy}
+                                    >
+                                      <option value=''>Pilih kategori</option>
+                                      {sortedCategories.map((item) => (
+                                        <option key={item.category_id} value={item.category_id}>
+                                          {item.title}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className='space-y-1.5'>
+                                    <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Nama Folder</label>
+                                    <input
+                                      type='text'
+                                      value={folderDraftTitle}
+                                      onChange={(event) => setFolderDraftTitle(event.target.value)}
+                                      className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                                      disabled={isStructureBusy}
+                                    />
+                                  </div>
+                                  <div className='flex flex-wrap gap-2'>
+                                    <DashboardActionButton type='submit' variant='primary' disabled={isStructureBusy} className='justify-center'>
+                                      Simpan
+                                    </DashboardActionButton>
+                                    <DashboardActionButton
+                                      type='button'
+                                      variant='ghost'
+                                      onClick={resetStructureEditors}
+                                      disabled={isStructureBusy}
+                                      className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                    >
+                                      Batal
+                                    </DashboardActionButton>
+                                  </div>
+                                </form>
+                              )}
 
-            <div className='mt-3 space-y-2'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
-                Nama Subheading
-              </label>
-              <input
-                type='text'
-                value={newSubheadingTitle}
-                onChange={(event) => setNewSubheadingTitle(event.target.value)}
-                placeholder='Contoh: Form dan Dokumen'
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-                disabled={folders.length === 0}
-              />
-            </div>
+                              <div className='mt-3 space-y-3 border-l-2 border-slate-200 pl-4'>
+                                {folderSubheadings.map((subheading, subheadingIndex) => {
+                                  const subheadingLinks = sortedOriginalLinks.filter(
+                                    (link) => link.subheading_id === subheading.subheading_id
+                                  );
 
-            <DashboardActionButton
-              type='submit'
-              variant='outline'
-              disabled={isCreatingSubheading || folders.length === 0}
-              className='mt-4 w-full justify-center'
-            >
-              {isCreatingSubheading ? 'Menyimpan...' : 'Simpan Subheading'}
-            </DashboardActionButton>
-          </form>
+                                  return (
+                                    <div key={subheading.subheading_id} className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                                      <div className='flex flex-wrap items-start justify-between gap-3'>
+                                        <div className='min-w-0'>
+                                          <div className='flex items-center gap-2'>
+                                            <span className='rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800'>
+                                              Subheading
+                                            </span>
+                                            <p className='truncate text-sm font-semibold text-slate-900'>{subheading.title}</p>
+                                          </div>
+                                        </div>
+                                        <div className='flex flex-wrap gap-2'>
+                                          <DashboardActionButton
+                                            onClick={() => handleReorderSubheading(subheading.subheading_id, 'up')}
+                                            disabled={isStructureBusy || subheadingIndex === 0}
+                                            variant='ghost'
+                                            className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                          >
+                                            Naik
+                                          </DashboardActionButton>
+                                          <DashboardActionButton
+                                            onClick={() => handleReorderSubheading(subheading.subheading_id, 'down')}
+                                            disabled={isStructureBusy || subheadingIndex === folderSubheadings.length - 1}
+                                            variant='ghost'
+                                            className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                          >
+                                            Turun
+                                          </DashboardActionButton>
+                                          <DashboardActionButton
+                                            onClick={() =>
+                                              editingSubheadingId === subheading.subheading_id
+                                                ? resetStructureEditors()
+                                                : openSubheadingEditor(subheading.subheading_id)
+                                            }
+                                            disabled={isStructureBusy}
+                                            variant='outline'
+                                            className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                                          >
+                                            {editingSubheadingId === subheading.subheading_id ? 'Tutup' : 'Ubah'}
+                                          </DashboardActionButton>
+                                          <DashboardActionButton
+                                            onClick={() => handleDeleteSubheading(subheading.subheading_id)}
+                                            disabled={isStructureBusy}
+                                            variant='ghost'
+                                            className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                                          >
+                                            Hapus
+                                          </DashboardActionButton>
+                                        </div>
+                                      </div>
+
+                                      {editingSubheadingId === subheading.subheading_id && (
+                                        <form onSubmit={handleUpdateSubheading} className='mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-3'>
+                                          <div className='space-y-1.5'>
+                                            <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Folder</label>
+                                            <select
+                                              value={subheadingDraftFolderId}
+                                              onChange={(event) => setSubheadingDraftFolderId(event.target.value)}
+                                              className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                                              disabled={isStructureBusy}
+                                            >
+                                              {sortedFolders.map((item) => (
+                                                <option key={item.folder_id} value={item.folder_id}>
+                                                  {item.title}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                          <div className='space-y-1.5'>
+                                            <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Nama Subheading</label>
+                                            <input
+                                              type='text'
+                                              value={subheadingDraftTitle}
+                                              onChange={(event) => setSubheadingDraftTitle(event.target.value)}
+                                              className='w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-green-500'
+                                              disabled={isStructureBusy}
+                                            />
+                                          </div>
+                                          <div className='flex flex-wrap gap-2'>
+                                            <DashboardActionButton type='submit' variant='primary' disabled={isStructureBusy} className='justify-center'>
+                                              Simpan
+                                            </DashboardActionButton>
+                                            <DashboardActionButton
+                                              type='button'
+                                              variant='ghost'
+                                              onClick={resetStructureEditors}
+                                              disabled={isStructureBusy}
+                                              className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                            >
+                                              Batal
+                                            </DashboardActionButton>
+                                          </div>
+                                        </form>
+                                      )}
+
+                                      <div className='mt-3 space-y-2 border-l-2 border-slate-200 pl-4'>
+                                        {subheadingLinks.length === 0 ? (
+                                          <p className='text-xs text-slate-500'>Belum ada link pada subheading ini.</p>
+                                        ) : (
+                                          subheadingLinks.map((link) => (
+                                            <div key={link.link_id} className='rounded-lg border border-slate-200 bg-white px-3 py-2'>
+                                              <div className='flex flex-wrap items-center justify-between gap-2'>
+                                                <div className='min-w-0'>
+                                                  <p className='truncate text-xs font-semibold text-slate-900'>{link.title}</p>
+                                                  <p className='truncate text-[11px] text-slate-500'>{link.link}</p>
+                                                </div>
+                                                <div className='flex gap-2'>
+                                                  <DashboardActionButton
+                                                    onClick={() => handleOpenEdit(link)}
+                                                    variant='outline'
+                                                    className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                                                  >
+                                                    Ubah
+                                                  </DashboardActionButton>
+                                                  <DashboardActionButton
+                                                    onClick={() => handleDelete(link.link_id)}
+                                                    variant='ghost'
+                                                    className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                                                  >
+                                                    Hapus
+                                                  </DashboardActionButton>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                {directLinks.length > 0 && (
+                                  <div className='rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3'>
+                                    <p className='mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                                      Link tanpa subheading
+                                    </p>
+                                    <div className='space-y-2'>
+                                      {directLinks.map((link) => (
+                                        <div key={link.link_id} className='rounded-lg border border-slate-200 bg-white px-3 py-2'>
+                                          <div className='flex flex-wrap items-center justify-between gap-2'>
+                                            <div className='min-w-0'>
+                                              <p className='truncate text-xs font-semibold text-slate-900'>{link.title}</p>
+                                              <p className='truncate text-[11px] text-slate-500'>{link.link}</p>
+                                            </div>
+                                            <div className='flex gap-2'>
+                                              <DashboardActionButton
+                                                onClick={() => handleOpenEdit(link)}
+                                                variant='outline'
+                                                className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                                              >
+                                                Ubah
+                                              </DashboardActionButton>
+                                              <DashboardActionButton
+                                                onClick={() => handleDelete(link.link_id)}
+                                                variant='ghost'
+                                                className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                                              >
+                                                Hapus
+                                              </DashboardActionButton>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className='rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm'>
+                <div className='mb-3 flex items-start justify-between gap-3'>
+                  <div>
+                    <p className='text-sm font-semibold text-slate-900'>Tanpa Kategori</p>
+                    <p className='text-xs text-slate-500'>Folder yang belum dipindahkan ke kategori.</p>
+                  </div>
+                  <span className='rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200'>
+                    {uncategorizedFolders.length}
+                  </span>
+                </div>
+
+                <div className='space-y-3 border-l-2 border-slate-200 pl-4'>
+                  {uncategorizedFolders.length === 0 ? (
+                    <p className='text-xs text-slate-500'>Belum ada folder tanpa kategori.</p>
+                  ) : (
+                    uncategorizedFolders.map((folder, index) => {
+                      const folderSubheadings = sortedSubheadings.filter(
+                        (subheading) => subheading.folder_id === folder.folder_id
+                      );
+
+                      return (
+                        <div key={folder.folder_id} className='rounded-xl border border-slate-200 bg-white p-3'>
+                          <div className='flex flex-wrap items-start justify-between gap-2'>
+                            <div className='min-w-0'>
+                              <div className='flex items-center gap-2'>
+                                <span className='rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800'>
+                                  Folder
+                                </span>
+                                <p className='truncate text-sm font-semibold text-slate-900'>{folder.title}</p>
+                              </div>
+                            </div>
+                            <div className='flex flex-wrap gap-2'>
+                              <DashboardActionButton
+                                onClick={() => handleReorderFolder(folder.folder_id, 'up')}
+                                disabled={isStructureBusy || index === 0}
+                                variant='ghost'
+                                className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                              >
+                                Naik
+                              </DashboardActionButton>
+                              <DashboardActionButton
+                                onClick={() => handleReorderFolder(folder.folder_id, 'down')}
+                                disabled={isStructureBusy || index === uncategorizedFolders.length - 1}
+                                variant='ghost'
+                                className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                              >
+                                Turun
+                              </DashboardActionButton>
+                              <DashboardActionButton
+                                onClick={() =>
+                                  editingFolderId === folder.folder_id
+                                    ? resetStructureEditors()
+                                    : openFolderEditor(folder.folder_id)
+                                }
+                                disabled={isStructureBusy}
+                                variant='outline'
+                                className='justify-center border-brand-green-200 text-brand-green-700 hover:bg-brand-green-50'
+                              >
+                                {editingFolderId === folder.folder_id ? 'Tutup' : 'Ubah'}
+                              </DashboardActionButton>
+                              <DashboardActionButton
+                                onClick={() => handleDeleteFolder(folder.folder_id)}
+                                disabled={isStructureBusy}
+                                variant='ghost'
+                                className='justify-center border-red-200 bg-white text-red-700 hover:bg-red-50'
+                              >
+                                Hapus
+                              </DashboardActionButton>
+                            </div>
+                          </div>
+
+                          {folderSubheadings.length > 0 && (
+                            <p className='mt-2 text-xs text-slate-500'>Subheading: {folderSubheadings.length}</p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+            </>
+          )}
         </div>
       </section>
 
-      <div className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]'>
-        <section className='min-w-0 space-y-4 rounded-xl bg-white p-5 shadow'>
-          <div className='flex flex-col items-stretch gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between'>
-            <div className='min-w-0 md:flex-1'>
-              <p className='text-sm font-semibold text-slate-900'>Atur Urutan Link</p>
-              <p className='text-xs text-slate-500'>
-                Drag link hanya di dalam folder yang sama. Link umum tidak bisa ditukar dengan link folder lain.
-              </p>
-            </div>
-
-            <DashboardActionButton
-              onClick={handleSaveOrder}
-              disabled={!isOrderDirty || isSavingOrder}
-              leftIcon={Save}
-              className='w-full justify-center border-brand-green-200 bg-white text-brand-green-700 hover:bg-brand-green-50 md:w-auto'
-            >
-              {isSavingOrder ? 'Menyimpan urutan...' : 'Simpan Urutan'}
-            </DashboardActionButton>
-          </div>
-
-          {isOrderDirty && (
-            <div className='flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900'>
-              <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' />
-              <p className='text-sm'>
-                Ada perubahan urutan yang belum disimpan. Klik tombol Simpan Urutan di card ini untuk menerapkan perubahan.
-              </p>
-            </div>
-          )}
-
-          <div className='grid gap-3 md:grid-cols-3'>
-            <input
-              type='text'
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder='Cari judul / URL...'
-              className='rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-            />
-
-            <select
-              value={selectedFolder}
-              onChange={(event) => {
-                setSelectedFolder(event.target.value);
-                setSelectedSubheading(ALL_FOLDER_OPTION);
-              }}
-              className='rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-            >
-              <option value={ALL_FOLDER_OPTION}>Semua Folder</option>
-              <option value={GENERAL_FOLDER_OPTION}>Link Umum</option>
-              {folders.map((folder) => (
-                <option key={folder.folder_id} value={folder.folder_id}>
-                  {folder.title}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedSubheading}
-              onChange={(event) => setSelectedSubheading(event.target.value)}
-              disabled={selectedFolder === GENERAL_FOLDER_OPTION}
-              className='rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500 disabled:bg-slate-100'
-            >
-              <option value={ALL_FOLDER_OPTION}>Semua Subheading</option>
-              <option value={NO_SUBHEADING_OPTION}>Tanpa Subheading</option>
-              {filteredSubheadings.map((subheading) => (
-                <option key={subheading.subheading_id} value={subheading.subheading_id}>
-                  {subheading.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isLoadingLinks ? (
-            <div className='rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500'>
-              Memuat data link...
-            </div>
-          ) : visibleLinks.length === 0 ? (
-            <div className='rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500'>
-              Tidak ada link pada filter ini.
-            </div>
-          ) : (
-            <div className='space-y-3'>
-              {paginatedLinks.map((item) => (
-                <article
-                  key={item.link_id}
-                  draggable
-                  onDragStart={() => setDraggingId(item.link_id)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => {
-                    if (!draggingId) return;
-                    reorderVisibleLinks(draggingId, item.link_id);
-                    setDraggingId(null);
-                  }}
-                  onDragEnd={() => setDraggingId(null)}
-                  className='rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-green-400 hover:bg-white'
-                >
-                  <div className='flex flex-wrap items-start justify-between gap-3'>
-                    <div className='flex min-w-0 flex-1 gap-3'>
-                      <div className='mt-0.5 rounded-lg bg-slate-200 p-2 text-slate-500'>
-                        <GripVertical className='h-4 w-4' />
-                      </div>
-
-                      <div className='min-w-0 flex-1'>
-                        <p className='truncate text-sm font-semibold text-slate-900'>{item.title}</p>
-                        <p className='mt-1 truncate text-xs text-slate-500'>{item.link}</p>
-                        <div className='mt-2 flex flex-wrap gap-2 text-[11px]'>
-                          <span className='rounded-full bg-brand-green-100 px-2 py-1 font-medium text-brand-green-800'>
-                            {getFolderLabel(item.folder_id)}
-                          </span>
-                          <span className='rounded-full bg-slate-200 px-2 py-1 font-medium text-slate-700'>
-                            {getSubheadingLabel(item.subheading_id)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className='flex w-full flex-wrap gap-2 md:w-auto md:flex-nowrap'>
-                      <DashboardActionButton
-                        onClick={() => handleOpenEdit(item)}
-                        leftIcon={Pencil}
-                        className='flex-1 justify-center md:flex-none'
-                      >
-                        Ubah
-                      </DashboardActionButton>
-                      <DashboardActionButton
-                        onClick={() => handleDelete(item.link_id)}
-                        leftIcon={Trash2}
-                        className='flex-1 justify-center border-red-300 text-red-700 hover:bg-red-50 md:flex-none'
-                      >
-                        Hapus
-                      </DashboardActionButton>
-                    </div>
-                  </div>
-                </article>
-              ))}
-
-              {totalPages > 1 && (
-                <div className='flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 mt-4 rounded-xl'>
-                  <span className='text-sm text-slate-500'>
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-                  <div className='flex gap-2'>
-                    <DashboardActionButton
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Sebelumnya
-                    </DashboardActionButton>
-                    <DashboardActionButton
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Selanjutnya
-                    </DashboardActionButton>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className='min-w-0 rounded-2xl bg-white p-5 shadow'>
-          <div className='mb-4 flex items-center justify-between'>
-            <h2 className='text-lg font-semibold text-slate-900'>
-              {editingId ? 'Ubah Link' : 'Tambah Link'}
-            </h2>
-            {editingId ? (
-              <DashboardActionButton type='button' variant='ghost' onClick={resetForm}>
-                Batal Ubah
+      {activeCreateModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4'>
+          <div className='w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl'>
+            <div className='mb-4 flex items-start justify-between gap-3'>
+              <div>
+                <h3 className='text-base font-semibold text-slate-900'>
+                  {activeCreateModal === 'category'
+                    ? 'Tambah Kategori'
+                    : activeCreateModal === 'folder'
+                    ? 'Tambah Folder'
+                    : activeCreateModal === 'subheading'
+                    ? 'Tambah Subheading'
+                    : editingId
+                    ? 'Ubah Link'
+                    : 'Tambah Link'}
+                </h3>
+                <p className='text-sm text-slate-500'>
+                  {activeCreateModal === 'category'
+                    ? 'Kategori dipakai untuk mengelompokkan folder agar lebih rapi.'
+                    : activeCreateModal === 'folder'
+                    ? 'Folder akan ditempatkan di dalam kategori yang dipilih.'
+                    : activeCreateModal === 'subheading'
+                    ? 'Subheading digunakan untuk membagi isi link dalam folder.'
+                    : 'Kelola data link langsung lewat popup tanpa card tambahan.'}
+                </p>
+              </div>
+              <DashboardActionButton
+                onClick={closeCreateModal}
+                variant='ghost'
+                className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              >
+                Tutup
               </DashboardActionButton>
-            ) : (
-              <Plus className='h-4 w-4 text-slate-400' />
+            </div>
+
+            {activeCreateModal === 'category' && (
+              <form onSubmit={handleCreateCategory} className='space-y-3'>
+                <div className='space-y-2'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    Nama Kategori
+                  </label>
+                  <input
+                    type='text'
+                    value={newCategoryTitle}
+                    onChange={(event) => setNewCategoryTitle(event.target.value)}
+                    placeholder='Contoh: Akademik'
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  />
+                </div>
+
+                <div className='flex justify-end gap-2'>
+                  <DashboardActionButton
+                    type='button'
+                    variant='ghost'
+                    onClick={closeCreateModal}
+                    disabled={isCreatingCategory}
+                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  >
+                    Batal
+                  </DashboardActionButton>
+                  <DashboardActionButton
+                    type='submit'
+                    variant='primary'
+                    disabled={isCreatingCategory}
+                    className='justify-center'
+                  >
+                    {isCreatingCategory ? 'Menyimpan...' : 'Simpan Kategori'}
+                  </DashboardActionButton>
+                </div>
+              </form>
+            )}
+
+            {activeCreateModal === 'folder' && (
+              <form onSubmit={handleCreateFolder} className='space-y-3'>
+                <div className='space-y-2'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    Kategori
+                  </label>
+                  <select
+                    value={newFolderCategoryId}
+                    onChange={(event) => setNewFolderCategoryId(event.target.value)}
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  >
+                    <option value=''>Pilih kategori</option>
+                    {categories.map((category) => (
+                      <option key={category.category_id} value={category.category_id}>
+                        {category.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className='space-y-2'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    Nama Folder
+                  </label>
+                  <input
+                    type='text'
+                    value={newFolderTitle}
+                    onChange={(event) => setNewFolderTitle(event.target.value)}
+                    placeholder='Contoh: Departemen Media'
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                    disabled={categories.length === 0}
+                  />
+                </div>
+
+                <div className='flex justify-end gap-2'>
+                  <DashboardActionButton
+                    type='button'
+                    variant='ghost'
+                    onClick={closeCreateModal}
+                    disabled={isCreatingFolder}
+                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  >
+                    Batal
+                  </DashboardActionButton>
+                  <DashboardActionButton
+                    type='submit'
+                    variant='primary'
+                    disabled={isCreatingFolder || categories.length === 0}
+                    className='justify-center'
+                  >
+                    {isCreatingFolder ? 'Menyimpan...' : 'Simpan Folder'}
+                  </DashboardActionButton>
+                </div>
+              </form>
+            )}
+
+            {activeCreateModal === 'subheading' && (
+              <form onSubmit={handleCreateSubheading} className='space-y-3'>
+                <div className='space-y-2'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    Folder
+                  </label>
+                  <select
+                    value={newSubheadingFolderId}
+                    onChange={(event) => setNewSubheadingFolderId(event.target.value)}
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  >
+                    <option value=''>Pilih folder</option>
+                    {folders.map((folder) => (
+                      <option key={folder.folder_id} value={folder.folder_id}>
+                        {folder.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className='space-y-2'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                    Nama Subheading
+                  </label>
+                  <input
+                    type='text'
+                    value={newSubheadingTitle}
+                    onChange={(event) => setNewSubheadingTitle(event.target.value)}
+                    placeholder='Contoh: Form dan Dokumen'
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                    disabled={folders.length === 0}
+                  />
+                </div>
+
+                <div className='flex justify-end gap-2'>
+                  <DashboardActionButton
+                    type='button'
+                    variant='ghost'
+                    onClick={closeCreateModal}
+                    disabled={isCreatingSubheading}
+                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  >
+                    Batal
+                  </DashboardActionButton>
+                  <DashboardActionButton
+                    type='submit'
+                    variant='primary'
+                    disabled={isCreatingSubheading || folders.length === 0}
+                    className='justify-center'
+                  >
+                    {isCreatingSubheading ? 'Menyimpan...' : 'Simpan Subheading'}
+                  </DashboardActionButton>
+                </div>
+              </form>
+            )}
+
+            {activeCreateModal === 'link' && (
+              <form onSubmit={handleSubmit} className='space-y-4'>
+                <div className='space-y-1.5'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Judul</label>
+                  <input
+                    type='text'
+                    value={formState.title}
+                    onChange={(event) =>
+                      setFormState((previous) => ({ ...previous, title: event.target.value }))
+                    }
+                    placeholder='Contoh: Form Pendaftaran'
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  />
+                </div>
+
+                <div className='space-y-1.5'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>URL</label>
+                  <input
+                    type='url'
+                    value={formState.link}
+                    onChange={(event) =>
+                      setFormState((previous) => ({ ...previous, link: event.target.value }))
+                    }
+                    placeholder='https://...'
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  />
+                </div>
+
+                <div className='space-y-1.5'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Kategori</label>
+                  <select
+                    value={formCategoryId}
+                    onChange={(event) => {
+                      const categoryValue = event.target.value;
+                      setFormCategoryId(categoryValue);
+                      setFormState((previous) => ({
+                        ...previous,
+                        folder_id:
+                          categoryValue === GENERAL_CATEGORY_OPTION ? GENERAL_FOLDER_OPTION : '',
+                        subheading_id: NO_SUBHEADING_OPTION,
+                      }));
+                    }}
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                  >
+                    <option value={GENERAL_CATEGORY_OPTION}>Link Umum (tanpa folder)</option>
+                    {categories.map((category) => (
+                      <option key={category.category_id} value={category.category_id}>
+                        {category.title}
+                      </option>
+                    ))}
+                    {uncategorizedFolders.length > 0 && (
+                      <option value={UNCATEGORIZED_CATEGORY_OPTION}>Tanpa kategori</option>
+                    )}
+                  </select>
+                </div>
+
+                {formCategoryId !== GENERAL_CATEGORY_OPTION && (
+                  <div className='space-y-1.5'>
+                    <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Folder</label>
+                    <select
+                      value={formState.folder_id}
+                      onChange={(event) => {
+                        const folderValue = event.target.value;
+                        setFormState((previous) => ({
+                          ...previous,
+                          folder_id: folderValue,
+                          subheading_id: NO_SUBHEADING_OPTION,
+                        }));
+                      }}
+                      className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
+                    >
+                      <option value=''>Pilih folder</option>
+                      {formCategoryFolders.map((folder) => (
+                        <option key={folder.folder_id} value={folder.folder_id}>
+                          {folder.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className='space-y-1.5'>
+                  <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Subheading</label>
+                  <select
+                    value={formState.subheading_id}
+                    onChange={(event) =>
+                      setFormState((previous) => ({ ...previous, subheading_id: event.target.value }))
+                    }
+                    disabled={formState.folder_id === GENERAL_FOLDER_OPTION || !formState.folder_id}
+                    className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500 disabled:bg-slate-100'
+                  >
+                    <option value={NO_SUBHEADING_OPTION}>Tanpa subheading</option>
+                    {formSubheadings.map((subheading) => (
+                      <option key={subheading.subheading_id} value={subheading.subheading_id}>
+                        {subheading.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className='flex justify-end gap-2'>
+                  <DashboardActionButton
+                    type='button'
+                    variant='ghost'
+                    onClick={closeCreateModal}
+                    disabled={isSubmitting}
+                    className='justify-center border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  >
+                    Batal
+                  </DashboardActionButton>
+                  <DashboardActionButton type='submit' variant='primary' disabled={isSubmitting} className='justify-center'>
+                    {isSubmitting
+                      ? editingId
+                        ? 'Menyimpan perubahan...'
+                        : 'Menambahkan link...'
+                      : editingId
+                      ? 'Simpan Perubahan'
+                      : 'Tambah Link'}
+                  </DashboardActionButton>
+                </div>
+              </form>
             )}
           </div>
-
-          <form onSubmit={handleSubmit} className='space-y-4'>
-            <div className='space-y-1.5'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Judul</label>
-              <input
-                type='text'
-                value={formState.title}
-                onChange={(event) =>
-                  setFormState((previous) => ({ ...previous, title: event.target.value }))
-                }
-                placeholder='Contoh: Form Pendaftaran'
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              />
-            </div>
-
-            <div className='space-y-1.5'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>URL</label>
-              <input
-                type='url'
-                value={formState.link}
-                onChange={(event) =>
-                  setFormState((previous) => ({ ...previous, link: event.target.value }))
-                }
-                placeholder='https://...'
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              />
-            </div>
-
-            <div className='space-y-1.5'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Folder</label>
-              <select
-                value={formState.folder_id}
-                onChange={(event) => {
-                  const folderValue = event.target.value;
-                  setFormState((previous) => ({
-                    ...previous,
-                    folder_id: folderValue,
-                    subheading_id: NO_SUBHEADING_OPTION,
-                  }));
-                }}
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              >
-                <option value={GENERAL_FOLDER_OPTION}>Link Umum</option>
-                {folders.map((folder) => (
-                  <option key={folder.folder_id} value={folder.folder_id}>
-                    {folder.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className='space-y-1.5'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-slate-500'>Subheading</label>
-              <select
-                value={formState.subheading_id}
-                onChange={(event) =>
-                  setFormState((previous) => ({ ...previous, subheading_id: event.target.value }))
-                }
-                disabled={formState.folder_id === GENERAL_FOLDER_OPTION}
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500 disabled:bg-slate-100'
-              >
-                <option value={NO_SUBHEADING_OPTION}>Tanpa subheading</option>
-                {formSubheadings.map((subheading) => (
-                  <option key={subheading.subheading_id} value={subheading.subheading_id}>
-                    {subheading.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <DashboardActionButton type='submit' variant='primary' disabled={isSubmitting} className='w-full justify-center'>
-              {isSubmitting
-                ? editingId
-                  ? 'Menyimpan perubahan...'
-                  : 'Menambahkan link...'
-                : editingId
-                ? 'Simpan Perubahan'
-                : 'Tambah Link'}
-            </DashboardActionButton>
-          </form>
-        </section>
-      </div>
+        </div>
+      )}
 
       <section className='min-w-0 rounded-2xl bg-white p-5 shadow'>
         <div className='mb-4 flex flex-wrap items-center justify-between gap-2'>

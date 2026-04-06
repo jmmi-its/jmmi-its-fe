@@ -166,21 +166,6 @@ function FinanceLineChart({ data }: { data: WeeklyPoint[] }) {
         </div>
       </div>
 
-      <div className='mt-6 grid gap-4 sm:grid-cols-3'>
-        <div className='rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100'>
-          <p className='text-sm text-emerald-700'>Total pemasukan</p>
-          <p className='mt-2 text-2xl font-semibold text-emerald-950'>Rp {formatCurrency(data.reduce((sum, item) => sum + item.income, 0))}</p>
-        </div>
-        <div className='rounded-2xl bg-rose-50 p-4 ring-1 ring-rose-100'>
-          <p className='text-sm text-rose-700'>Total pengeluaran</p>
-          <p className='mt-2 text-2xl font-semibold text-rose-950'>Rp {formatCurrency(data.reduce((sum, item) => sum + item.expenses, 0))}</p>
-        </div>
-        <div className='rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200'>
-          <p className='text-sm text-slate-600'>Saldo minggu ini</p>
-          <p className='mt-2 text-2xl font-semibold text-slate-900'>Rp {formatCurrency(data.reduce((sum, item) => sum + item.balance, 0))}</p>
-        </div>
-      </div>
-
       <div className='mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80'>
         <svg viewBox={`0 0 ${width} ${height}`} className='h-auto w-full'>
           <defs>
@@ -435,9 +420,9 @@ export default function AdminDashboard() {
         />
       </section>
 
-      <div className='grid gap-6 xl:grid-cols-[1.55fr_1fr]'>
-        <FinanceLineChart data={weeklySeries} />
+      <div className='grid gap-6 xl:grid-cols-[1fr_1.55fr]'>
         <UpcomingEventCard events={reminderEvents} />
+        <FinanceLineChart data={weeklySeries} />
       </div>
     </div>
   );
