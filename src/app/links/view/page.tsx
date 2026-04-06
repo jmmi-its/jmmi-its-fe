@@ -9,6 +9,7 @@ import { IoChevronBack } from 'react-icons/io5';
 import LinkButton from '@/components/links/LinkButton';
 import SubheadingSection from '@/components/links/SubheadingSection';
 import NextImage from '@/components/NextImage';
+import { DANGER_TOAST, showToast } from '@/components/Toast';
 import Typography from '@/components/Typography';
 
 import { useGetFolderById } from '@/app/links/hook/useFolder';
@@ -32,6 +33,8 @@ function FolderViewContent() {
   const [folderKey, setFolderKey] = React.useState('');
   const [isLocked, setIsLocked] = React.useState(false);
   const [hasTriedLoad, setHasTriedLoad] = React.useState(false);
+  const [hasAttemptedUnlock, setHasAttemptedUnlock] = React.useState(false);
+  const [hasShownWrongKeyToast, setHasShownWrongKeyToast] = React.useState(false);
 
   React.useEffect(() => {
     if (!folderId) return;
@@ -42,6 +45,11 @@ function FolderViewContent() {
     setPrefilledStorageKey(storedKey);
     setFolderKey(storedKey);
     sessionStorage.removeItem(`folder-key:${folderId}`);
+  }, [folderId]);
+
+  React.useEffect(() => {
+    setHasAttemptedUnlock(false);
+    setHasShownWrongKeyToast(false);
   }, [folderId]);
 
   React.useEffect(() => {
@@ -64,13 +72,28 @@ function FolderViewContent() {
     if (errorStatus === 403) {
       setIsLocked(true);
       setNotFound(false);
+
+      const attemptedWithKey = Boolean(prefilledStorageKey) || hasAttemptedUnlock;
+      if (attemptedWithKey && !hasShownWrongKeyToast) {
+        showToast('Key folder salah', DANGER_TOAST);
+        setHasShownWrongKeyToast(true);
+      }
+
       return;
     }
 
     if (error) {
       setNotFound(true);
     }
-  }, [hasTriedLoad, folderData, error, errorStatus]);
+  }, [
+    hasTriedLoad,
+    folderData,
+    error,
+    errorStatus,
+    hasAttemptedUnlock,
+    hasShownWrongKeyToast,
+    prefilledStorageKey,
+  ]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +103,13 @@ function FolderViewContent() {
       return;
     }
 
+    setHasAttemptedUnlock(true);
+
     const data = await fetchFolder(folderId, folderKey.trim());
     if (data) {
       setIsLocked(false);
       setNotFound(false);
+      setHasShownWrongKeyToast(false);
     } else {
       setIsLocked(true);
     }
