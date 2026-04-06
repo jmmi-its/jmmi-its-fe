@@ -5,6 +5,7 @@ import * as React from 'react';
 import { Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 interface FolderCardProps {
   title: string;
@@ -27,6 +28,7 @@ export default function FolderCard({
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [inputKey, setInputKey] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleClick = () => {
     if (isLocked) {
@@ -43,9 +45,10 @@ export default function FolderCard({
     setIsModalOpen(false);
     setInputKey('');
     setErrorMessage('');
+    setIsSubmitting(false);
   };
 
-  const handleSubmitKey = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitKey = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedKey = inputKey.trim();
@@ -54,9 +57,26 @@ export default function FolderCard({
       return;
     }
 
-    sessionStorage.setItem(`folder-key:${folderId}`, normalizedKey);
-    handleCloseModal();
-    router.push(`/links/view?id=${folderId}`);
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      // Validate key by fetching the folder
+      await api.get(`/links/folders/${folderId}?key=${encodeURIComponent(normalizedKey)}`);
+      
+      // If success, set session storage and redirect
+      sessionStorage.setItem(`folder-key:${folderId}`, normalizedKey);
+      handleCloseModal();
+      router.push(`/links/view?id=${folderId}`);
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        setErrorMessage('Key folder salah');
+      } else {
+        setErrorMessage('Terjadi kesalahan. Silakan coba lagi.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -120,9 +140,13 @@ export default function FolderCard({
               </button>
               <button
                 type='submit'
-                className='rounded-lg bg-gradient-to-r from-orange-600 to-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:from-orange-700 hover:to-orange-600'
+                disabled={isSubmitting}
+                className={cn(
+                  'rounded-lg bg-gradient-to-r from-orange-600 to-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:from-orange-700 hover:to-orange-600',
+                  isSubmitting && 'opacity-70 cursor-not-allowed'
+                )}
               >
-                Buka Folder
+                {isSubmitting ? 'Memproses...' : 'Buka Folder'}
               </button>
             </div>
           </form>
