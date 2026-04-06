@@ -10,6 +10,7 @@ export interface Category {
 export interface Folder {
   folder_id: string; // UUID
   category_id: string | null;
+  is_locked: boolean;
   title: string;
   weight: number;
   timestamp: string;
@@ -64,6 +65,7 @@ export interface CreateFolderRequest {
   title: string;
   weight: number;
   category_id?: string | null;
+  access_key?: string | null;
 }
 
 export type UpdateFolderRequest = Partial<CreateFolderRequest>;

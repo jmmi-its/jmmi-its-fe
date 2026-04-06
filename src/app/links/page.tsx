@@ -172,6 +172,7 @@ export default function LinksPage() {
                       key={folder.folder_id}
                       title={folder.title}
                       folderId={folder.folder_id}
+                      isLocked={folder.is_locked}
                     />
                   ))}
                 </div>
@@ -201,6 +202,7 @@ export default function LinksPage() {
                     key={folder.folder_id}
                     title={folder.title}
                     folderId={folder.folder_id}
+                    isLocked={folder.is_locked}
                   />
                 ))}
               </div>

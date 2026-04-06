@@ -78,12 +78,13 @@ export const useGetFolderById = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFolder = useCallback(async (id: string) => {
+  const fetchFolder = useCallback(async (id: string, key?: string) => {
     setIsLoading(true);
     setError(null);
     try {
+      const query = key ? `?key=${encodeURIComponent(key)}` : '';
       const res = await api.get<ApiResponse<FolderDetailData>>(
-        `/links/folders/${id}`
+        `/links/folders/${id}${query}`
       );
       setData(res.data.data);
       return res.data.data;

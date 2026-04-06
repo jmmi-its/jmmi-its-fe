@@ -94,7 +94,7 @@ export default function FoldersListPage() {
                       {item.title}
                     </Typography>
                     <Typography className='text-gray-400 text-xs mt-1'>
-                      Weight: {item.weight}
+                      Weight: {item.weight} | {item.is_locked ? 'Locked' : 'Open'}
                     </Typography>
                   </div>
                 </button>

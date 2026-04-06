@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 interface FolderCardProps {
   title: string;
   folderId: string;
+  isLocked?: boolean;
   className?: string;
 }
 
@@ -18,6 +19,7 @@ interface FolderCardProps {
 export default function FolderCard({
   title,
   folderId,
+  isLocked = false,
   className,
 }: FolderCardProps) {
   const router = useRouter();
@@ -38,7 +40,10 @@ export default function FolderCard({
         className
       )}
     >
-      <span className='text-sm sm:text-base md:text-lg'>{title}</span>
+      <span className='text-sm sm:text-base md:text-lg'>
+        {title}
+        {isLocked ? ' (Locked)' : ''}
+      </span>
     </button>
   );
 }

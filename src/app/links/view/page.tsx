@@ -23,19 +23,58 @@ function FolderViewContent() {
   const {
     data: folderData,
     isLoading: isLoadingData,
+    error,
     fetchFolder,
   } = useGetFolderById();
   const [notFound, setNotFound] = React.useState(false);
+  const [folderKey, setFolderKey] = React.useState('');
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [hasTriedLoad, setHasTriedLoad] = React.useState(false);
 
   React.useEffect(() => {
     if (folderId) {
       const loadData = async () => {
         const data = await fetchFolder(folderId);
-        if (!data) setNotFound(true);
+        if (data) {
+          setIsLocked(false);
+          setNotFound(false);
+        }
+        setHasTriedLoad(true);
       };
       loadData();
     }
   }, [folderId, fetchFolder]);
+
+  React.useEffect(() => {
+    if (!hasTriedLoad || folderData?.folder) return;
+
+    if (error === 'Folder key is required or invalid') {
+      setIsLocked(true);
+      setNotFound(false);
+      return;
+    }
+
+    if (error) {
+      setNotFound(true);
+    }
+  }, [hasTriedLoad, folderData, error]);
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!folderId) return;
+    if (!folderKey.trim()) {
+      alert('Masukkan key folder terlebih dahulu');
+      return;
+    }
+
+    const data = await fetchFolder(folderId, folderKey.trim());
+    if (data) {
+      setIsLocked(false);
+      setNotFound(false);
+    } else {
+      setIsLocked(true);
+    }
+  };
 
   const isLoading = isLoadingData;
 
@@ -45,6 +84,40 @@ function FolderViewContent() {
     return (
       <div className='min-h-screen flex items-center justify-center'>
         <Typography className='text-white'>Loading...</Typography>
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className='min-h-screen flex items-center justify-center px-4'>
+        <form
+          onSubmit={handleUnlock}
+          className='w-full max-w-md bg-white/10 p-6 rounded-xl space-y-4'
+        >
+          <Typography as='h2' variant='h5' className='text-white font-bold'>
+            Folder Terkunci
+          </Typography>
+          <Typography className='text-gray-200'>
+            Masukkan key untuk membuka folder ini.
+          </Typography>
+          <input
+            type='text'
+            value={folderKey}
+            onChange={(e) => setFolderKey(e.target.value)}
+            placeholder='Masukkan key folder'
+            className='w-full px-4 py-3 rounded-lg bg-blue-700 text-white placeholder-blue-300 border-none focus:ring-2 focus:ring-blue-500'
+          />
+          <button
+            type='submit'
+            className='w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold py-3 rounded-lg'
+          >
+            Buka Folder
+          </button>
+          {error && (
+            <Typography className='text-red-300 text-sm'>{error}</Typography>
+          )}
+        </form>
       </div>
     );
   }

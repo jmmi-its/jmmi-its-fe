@@ -117,7 +117,7 @@ function getEventDateTime(eventDate: string, eventTime: string) {
 export default function CalendarPage() {
   const { data, isLoading, fetchCalendarEvents } = useGetCalendarEvents();
   const [activeFilter, setActiveFilter] = React.useState<'all' | 'upcoming' | 'past'>('upcoming');
-  const [viewMode, setViewMode] = React.useState<'list' | 'calendar'>('calendar');
+  const [viewMode, setViewMode] = React.useState<'list' | 'calendar'>('list');
   const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = React.useState(() => {
     const now = new Date();

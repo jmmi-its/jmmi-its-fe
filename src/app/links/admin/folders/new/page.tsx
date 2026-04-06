@@ -17,6 +17,8 @@ export default function NewFolderPage() {
   const [folderTitle, setFolderTitle] = React.useState('');
   const [folderWeight, setFolderWeight] = React.useState('0');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('');
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [accessKey, setAccessKey] = React.useState('');
 
   React.useEffect(() => {
     fetchCategories();
@@ -34,7 +36,13 @@ export default function NewFolderPage() {
       title: folderTitle,
       category_id: selectedCategory || null,
       weight: parseInt(folderWeight) || 0,
+      access_key: isLocked ? accessKey.trim() || null : null,
     };
+
+    if (isLocked && !accessKey.trim()) {
+      alert('Key folder harus diisi jika folder dikunci!');
+      return;
+    }
 
     try {
       await createFolder(_folderData);
@@ -138,6 +146,26 @@ export default function NewFolderPage() {
               <p className='text-xs text-gray-400 ml-1'>
                 Weight lebih tinggi = muncul lebih dulu di Homepage
               </p>
+            </div>
+
+            <div className='space-y-2'>
+              <label className='flex items-center gap-2 text-gray-200 text-sm font-medium ml-1'>
+                <input
+                  type='checkbox'
+                  checked={isLocked}
+                  onChange={(e) => setIsLocked(e.target.checked)}
+                />
+                Kunci folder dengan key
+              </label>
+              {isLocked && (
+                <input
+                  type='text'
+                  value={accessKey}
+                  onChange={(e) => setAccessKey(e.target.value)}
+                  placeholder='Masukkan key folder'
+                  className='w-full px-4 py-3 rounded-xl bg-white/5 text-white placeholder-white/30 border border-white/10 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors outline-none'
+                />
+              )}
             </div>
 
             {/* Buttons */}

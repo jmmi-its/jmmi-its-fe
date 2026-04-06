@@ -9,18 +9,14 @@ import Loading from '@/components/Loading';
 import Typography from '@/components/Typography';
 
 import { useGetCategories } from '@/app/links/hook/useCategory';
-import { useGetFolderById, useUpdateFolder } from '@/app/links/hook/useFolder';
+import { useGetFolders, useUpdateFolder } from '@/app/links/hook/useFolder';
 
 function EditFolderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const folderId = searchParams.get('id');
 
-  const {
-    data: folderData,
-    fetchFolder,
-    isLoading: isLoadingFolder,
-  } = useGetFolderById();
+  const { data: folders, fetchFolders, isLoading: isLoadingFolder } = useGetFolders();
   const {
     data: categories,
     fetchCategories,
@@ -31,21 +27,29 @@ function EditFolderContent() {
   const [folderTitle, setFolderTitle] = React.useState<string>('');
   const [folderWeight, setFolderWeight] = React.useState<string>('0');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('');
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [accessKey, setAccessKey] = React.useState('');
+  const [wasLocked, setWasLocked] = React.useState(false);
 
   React.useEffect(() => {
     if (folderId) {
-      fetchFolder(folderId);
+      fetchFolders();
       fetchCategories();
     }
-  }, [folderId, fetchFolder, fetchCategories]);
+  }, [folderId, fetchFolders, fetchCategories]);
 
   React.useEffect(() => {
-    if (folderData && folderData.folder) {
-      setFolderTitle(folderData.folder.title);
-      setFolderWeight(folderData.folder.weight.toString());
-      setSelectedCategory(folderData.folder.category_id || '');
+    if (folderId && folders.length > 0) {
+      const targetFolder = folders.find((item) => item.folder_id === folderId);
+      if (targetFolder) {
+        setFolderTitle(targetFolder.title);
+        setFolderWeight(targetFolder.weight.toString());
+        setSelectedCategory(targetFolder.category_id || '');
+        setIsLocked(targetFolder.is_locked);
+        setWasLocked(targetFolder.is_locked);
+      }
     }
-  }, [folderData]);
+  }, [folderId, folders]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +66,15 @@ function EditFolderContent() {
       title: folderTitle,
       category_id: selectedCategory || null,
       weight: parseInt(folderWeight) || 0,
+      access_key: isLocked
+        ? accessKey.trim() || undefined
+        : null,
     };
+
+    if (isLocked && !wasLocked && !accessKey.trim()) {
+      alert('Isi key baru untuk mengunci folder!');
+      return;
+    }
 
     try {
       await updateFolder(folderId, _folderData);
@@ -149,6 +161,39 @@ function EditFolderContent() {
               <p className='text-xs text-gray-300'>
                 Weight lebih tinggi = muncul lebih dulu di Homepage
               </p>
+            </div>
+
+            <div className='space-y-2'>
+              <label className='block text-gray-100 text-sm font-medium'>
+                Kunci Folder
+              </label>
+              <label className='flex items-center gap-2 text-gray-200 text-sm'>
+                <input
+                  type='checkbox'
+                  checked={isLocked}
+                  onChange={(e) => {
+                    setIsLocked(e.target.checked);
+                    if (!e.target.checked) {
+                      setAccessKey('');
+                    }
+                  }}
+                />
+                Aktifkan key folder
+              </label>
+              {isLocked && (
+                <input
+                  type='text'
+                  value={accessKey}
+                  onChange={(e) => setAccessKey(e.target.value)}
+                  placeholder='Masukkan key baru folder'
+                  className='w-full px-4 py-3 rounded-lg bg-blue-700 text-white placeholder-blue-300 border-none focus:ring-2 focus:ring-blue-500'
+                />
+              )}
+              {isLocked && (
+                <p className='text-xs text-gray-300'>
+                  Untuk keamanan, key lama tidak ditampilkan. Isi key baru saat update.
+                </p>
+              )}
             </div>
 
             {/* Buttons */}

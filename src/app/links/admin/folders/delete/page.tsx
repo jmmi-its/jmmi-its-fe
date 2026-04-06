@@ -7,25 +7,21 @@ import { Suspense } from 'react';
 import Loading from '@/components/Loading';
 import Typography from '@/components/Typography';
 
-import { useDeleteFolder, useGetFolderById } from '@/app/links/hook/useFolder';
+import { useDeleteFolder, useGetFolders } from '@/app/links/hook/useFolder';
 
 function DeleteFolderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const folderId = searchParams.get('id');
 
-  const {
-    data: folderData,
-    fetchFolder,
-    isLoading: isLoadingFolder,
-  } = useGetFolderById();
+  const { data: folders, fetchFolders, isLoading: isLoadingFolder } = useGetFolders();
   const { mutate: deleteFolder, isLoading: isDeleting } = useDeleteFolder();
 
   React.useEffect(() => {
     if (folderId) {
-      fetchFolder(folderId);
+      fetchFolders();
     }
-  }, [folderId, fetchFolder]);
+  }, [folderId, fetchFolders]);
 
   const handleDelete = async () => {
     if (!folderId) return;
@@ -38,7 +34,8 @@ function DeleteFolderContent() {
   };
 
   const isLoading = isLoadingFolder;
-  const folderTitle = folderData?.folder?.title || '';
+  const folderTitle =
+    folders.find((item) => item.folder_id === folderId)?.title || '';
 
   if (!folderId) {
     // Optional: Handle missing ID
