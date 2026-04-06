@@ -33,6 +33,13 @@ const EMPTY_FORM: LinkFormState = {
   subheading_id: NO_SUBHEADING_OPTION,
 };
 
+const getLinkPlacementLabel = (item: Link) => {
+  if (item.subheading_id) return 'Subheading';
+  if (item.folder_id) return 'Folder';
+  if (item.category_id) return 'Kategori';
+  return 'Umum';
+};
+
 type PreviewToolbarButtonProps = {
   icon: typeof ArrowLeft;
   children: string;
@@ -136,7 +143,7 @@ export default function AdminLinksDashboardPage() {
     const linkStamp = sortedOriginalLinks
       .map(
         (item) =>
-          `${item.link_id}:${item.title}:${item.link}:${item.folder_id ?? ''}:${item.subheading_id ?? ''}:${item.weight}`
+          `${item.link_id}:${item.title}:${item.link}:${item.category_id ?? ''}:${item.folder_id ?? ''}:${item.subheading_id ?? ''}:${item.weight}`
       )
       .join('|');
     const categoryStamp = categories
@@ -272,7 +279,9 @@ export default function AdminLinksDashboardPage() {
 
     setEditingId(item.link_id);
     setFormCategoryId(
-      item.folder_id
+      item.category_id
+        ? item.category_id
+        : item.folder_id
         ? selectedFolder?.category_id ?? UNCATEGORIZED_CATEGORY_OPTION
         : GENERAL_CATEGORY_OPTION
     );
@@ -314,7 +323,10 @@ export default function AdminLinksDashboardPage() {
       return;
     }
 
-    if (formCategoryId !== GENERAL_CATEGORY_OPTION && !formState.folder_id) {
+    if (
+      formCategoryId === UNCATEGORIZED_CATEGORY_OPTION &&
+      formState.folder_id === GENERAL_FOLDER_OPTION
+    ) {
       showToast('Pilih folder terlebih dahulu', DANGER_TOAST);
       return;
     }
@@ -324,7 +336,17 @@ export default function AdminLinksDashboardPage() {
     const payload = {
       title: formState.title.trim(),
       link: formState.link.trim(),
-      folder_id: formState.folder_id === GENERAL_FOLDER_OPTION ? null : formState.folder_id,
+      category_id:
+        formCategoryId !== GENERAL_CATEGORY_OPTION &&
+        formCategoryId !== UNCATEGORIZED_CATEGORY_OPTION &&
+        formState.folder_id === GENERAL_FOLDER_OPTION
+          ? formCategoryId
+          : null,
+      folder_id:
+        formCategoryId === GENERAL_CATEGORY_OPTION ||
+        formState.folder_id === GENERAL_FOLDER_OPTION
+          ? null
+          : formState.folder_id,
       subheading_id:
         formState.folder_id === GENERAL_FOLDER_OPTION ||
         formState.subheading_id === NO_SUBHEADING_OPTION
@@ -731,19 +753,19 @@ export default function AdminLinksDashboardPage() {
                 <div className='mb-3 flex items-start justify-between gap-3'>
                   <div>
                     <p className='text-sm font-semibold text-slate-900'>Link Umum</p>
-                    <p className='text-xs text-slate-500'>Link yang tidak berada dalam folder.</p>
+                    <p className='text-xs text-slate-500'>Link yang tidak berada dalam kategori atau folder.</p>
                   </div>
                   <span className='rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200'>
-                    {sortedOriginalLinks.filter((link) => !link.folder_id).length}
+                    {sortedOriginalLinks.filter((link) => !link.category_id && !link.folder_id).length}
                   </span>
                 </div>
 
                 <div className='space-y-2'>
-                  {sortedOriginalLinks.filter((link) => !link.folder_id).length === 0 ? (
+                  {sortedOriginalLinks.filter((link) => !link.category_id && !link.folder_id).length === 0 ? (
                     <p className='text-xs text-slate-500'>Belum ada link umum.</p>
                   ) : (
                     sortedOriginalLinks
-                      .filter((link) => !link.folder_id)
+                      .filter((link) => !link.category_id && !link.folder_id)
                       .map((link) => (
                         <div key={link.link_id} className='rounded-lg border border-slate-200 bg-white px-3 py-2'>
                           <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -751,7 +773,10 @@ export default function AdminLinksDashboardPage() {
                               <p className='truncate text-xs font-semibold text-slate-900'>{link.title}</p>
                               <p className='truncate text-[11px] text-slate-500'>{link.link}</p>
                             </div>
-                            <div className='flex gap-2'>
+                            <div className='flex items-center gap-2'>
+                              <span className='rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700'>
+                                {getLinkPlacementLabel(link)}
+                              </span>
                               <DashboardActionButton
                                 onClick={() => handleOpenEdit(link)}
                                 variant='outline'
@@ -777,6 +802,12 @@ export default function AdminLinksDashboardPage() {
               {sortedCategories.map((category, categoryIndex) => {
                 const categoryFolders = sortedFolders.filter(
                   (folder) => folder.category_id === category.category_id
+                );
+                const categoryLinks = sortedOriginalLinks.filter(
+                  (link) =>
+                    link.category_id === category.category_id &&
+                    !link.folder_id &&
+                    !link.subheading_id
                 );
 
                 return (
@@ -857,6 +888,22 @@ export default function AdminLinksDashboardPage() {
                           </DashboardActionButton>
                         </div>
                       </form>
+                    )}
+
+                    {categoryLinks.length > 0 && (
+                      <div className='mt-4 space-y-2 rounded-xl border border-dashed border-slate-300 bg-white p-3'>
+                        <p className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
+                          Link langsung di kategori
+                        </p>
+                        <div className='space-y-2'>
+                          {categoryLinks.map((link) => (
+                            <div key={link.link_id} className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
+                              <p className='text-sm font-medium text-slate-900'>{link.title}</p>
+                              <p className='truncate text-xs text-slate-500'>{link.link}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
 
                     <div className='mt-4 space-y-3 border-l-2 border-slate-200 pl-4'>
@@ -1458,14 +1505,13 @@ export default function AdminLinksDashboardPage() {
                       setFormCategoryId(categoryValue);
                       setFormState((previous) => ({
                         ...previous,
-                        folder_id:
-                          categoryValue === GENERAL_CATEGORY_OPTION ? GENERAL_FOLDER_OPTION : '',
+                        folder_id: GENERAL_FOLDER_OPTION,
                         subheading_id: NO_SUBHEADING_OPTION,
                       }));
                     }}
                     className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
                   >
-                    <option value={GENERAL_CATEGORY_OPTION}>Link Umum (tanpa folder)</option>
+                    <option value={GENERAL_CATEGORY_OPTION}>Link tanpa folder</option>
                     {categories.map((category) => (
                       <option key={category.category_id} value={category.category_id}>
                         {category.title}
@@ -1492,7 +1538,11 @@ export default function AdminLinksDashboardPage() {
                       }}
                       className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
                     >
-                      <option value=''>Pilih folder</option>
+                      <option value={GENERAL_FOLDER_OPTION}>
+                        {formCategoryId === UNCATEGORIZED_CATEGORY_OPTION
+                          ? 'Pilih folder'
+                          : 'Langsung di kategori ini'}
+                      </option>
                       {formCategoryFolders.map((folder) => (
                         <option key={folder.folder_id} value={folder.folder_id}>
                           {folder.title}

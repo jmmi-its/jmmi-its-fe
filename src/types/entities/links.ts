@@ -25,6 +25,7 @@ export interface Subheading {
 
 export interface Link {
   link_id: string;
+  category_id: string | null;
   folder_id: string | null;
   subheading_id: string | null;
   title: string;
@@ -39,6 +40,7 @@ export type SubheadingWithLinks = Subheading & { links: Link[] };
 
 export interface LinksHomepageData {
   categories: Category[];
+  category_links: Link[];
   folders: Folder[];
   general_links: Link[];
 }

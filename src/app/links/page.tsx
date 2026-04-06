@@ -10,7 +10,7 @@ import Typography from '@/components/Typography';
 
 import { useGetLinksHomepage } from '@/app/links/hook/useLink';
 
-import { Folder } from '@/types/entities/links';
+import { Folder, Link } from '@/types/entities/links';
 
 export default function LinksPage() {
   const {
@@ -20,9 +20,10 @@ export default function LinksPage() {
   } = useGetLinksHomepage();
   const linksData = React.useMemo(() => {
     if (!homepageData)
-      return { general_links: [], folders: [], categories: [] };
+      return { general_links: [], category_links: [], folders: [], categories: [] };
     return {
       general_links: homepageData.general_links || [],
+      category_links: homepageData.category_links || [],
       folders: homepageData.folders || [],
       categories: homepageData.categories || [],
     };
@@ -32,7 +33,7 @@ export default function LinksPage() {
     fetchLinksHomepage();
   }, [fetchLinksHomepage]);
 
-  const { general_links, folders, categories } = linksData;
+  const { general_links, category_links, folders, categories } = linksData;
 
   // Group folders by category
   const foldersByCategory = React.useMemo(() => {
@@ -52,6 +53,22 @@ export default function LinksPage() {
 
     return { grouped, uncategorized };
   }, [folders]);
+
+  const categoryLinksByCategory = React.useMemo(() => {
+    const grouped: Record<string, Link[]> = {};
+
+    category_links.forEach((link) => {
+      if (!link.category_id) return;
+
+      if (!grouped[link.category_id]) {
+        grouped[link.category_id] = [];
+      }
+
+      grouped[link.category_id].push(link);
+    });
+
+    return grouped;
+  }, [category_links]);
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -110,7 +127,15 @@ export default function LinksPage() {
           {categories.map((category) => {
             const categoryFolders =
               foldersByCategory.grouped[category.category_id];
-            if (!categoryFolders || categoryFolders.length === 0) return null;
+            const categoryDirectLinks =
+              categoryLinksByCategory[category.category_id] || [];
+
+            if (
+              (!categoryFolders || categoryFolders.length === 0) &&
+              categoryDirectLinks.length === 0
+            ) {
+              return null;
+            }
 
             return (
               <div key={category.category_id} className='space-y-4'>
@@ -127,8 +152,22 @@ export default function LinksPage() {
                     </Typography>
                   </div>
                 </div>
+
+                {categoryDirectLinks.length > 0 && (
+                  <div className='space-y-3'>
+                    {categoryDirectLinks.map((link) => (
+                      <LinkButton
+                        key={link.link_id}
+                        title={link.title}
+                        url={link.link}
+                        variant='blue'
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <div className='space-y-3'>
-                  {categoryFolders.map((folder) => (
+                  {categoryFolders?.map((folder) => (
                     <FolderCard
                       key={folder.folder_id}
                       title={folder.title}

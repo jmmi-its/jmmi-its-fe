@@ -8,9 +8,15 @@ import { IoChevronBack } from 'react-icons/io5';
 import Loading from '@/components/Loading';
 import Typography from '@/components/Typography';
 
+import { useGetCategories } from '@/app/links/hook/useCategory';
 import { useGetFolders } from '@/app/links/hook/useFolder';
 import { useGetLinkById, useUpdateLink } from '@/app/links/hook/useLink';
 import { useGetSubheadings } from '@/app/links/hook/useSubheading';
+
+const GENERAL_CATEGORY_OPTION = '__general_category__';
+const UNCATEGORIZED_CATEGORY_OPTION = '__uncategorized_category__';
+const GENERAL_FOLDER_OPTION = '__general__';
+const NO_SUBHEADING_OPTION = '__no_subheading__';
 
 function EditLinkContent() {
   const router = useRouter();
@@ -18,6 +24,7 @@ function EditLinkContent() {
   const linkId = searchParams.get('id');
 
   const { data: link, fetchLink, isLoading: isLoadingLink } = useGetLinkById();
+  const { data: categories, fetchCategories, isLoading: isLoadingCategories } = useGetCategories();
   const {
     data: folders,
     fetchFolders,
@@ -31,6 +38,7 @@ function EditLinkContent() {
   const { mutateAsync: updateLink, isLoading: isUpdating } = useUpdateLink();
 
   // Form state
+  const [selectedCategory, setSelectedCategory] = React.useState<string>(GENERAL_CATEGORY_OPTION);
   const [selectedFolder, setSelectedFolder] = React.useState<string>('');
   const [useSubheading, setUseSubheading] = React.useState<string>('tidak');
   const [selectedSubheading, setSelectedSubheading] =
@@ -40,27 +48,48 @@ function EditLinkContent() {
 
   // Filtered subheadings
   const filteredSubheadings = React.useMemo(() => {
-    if (!selectedFolder || selectedFolder === 'umum' || !subheadings) return [];
+    if (!selectedFolder || selectedFolder === GENERAL_FOLDER_OPTION || !subheadings) return [];
     return subheadings.filter((sub) => sub.folder_id === selectedFolder);
   }, [selectedFolder, subheadings]);
+
+  const filteredFolders = React.useMemo(() => {
+    if (selectedCategory === GENERAL_CATEGORY_OPTION) return [];
+    if (selectedCategory === UNCATEGORIZED_CATEGORY_OPTION) {
+      return folders.filter((folder) => !folder.category_id);
+    }
+    return folders.filter((folder) => folder.category_id === selectedCategory);
+  }, [folders, selectedCategory]);
+
+  const hasUncategorizedFolders = React.useMemo(
+    () => folders.some((folder) => !folder.category_id),
+    [folders]
+  );
 
   React.useEffect(() => {
     if (linkId) {
       fetchLink(linkId);
+      fetchCategories();
       fetchFolders();
       fetchSubheadings();
     }
-  }, [linkId, fetchLink, fetchFolders, fetchSubheadings]);
+  }, [linkId, fetchCategories, fetchLink, fetchFolders, fetchSubheadings]);
 
   React.useEffect(() => {
     if (link) {
       setLinkTitle(link.title);
       setLinkUrl(link.link);
-      setSelectedFolder(link.folder_id || 'umum');
+      setSelectedCategory(
+        link.category_id
+          ? link.category_id
+          : link.folder_id
+          ? folders.find((folder) => folder.folder_id === link.folder_id)?.category_id || UNCATEGORIZED_CATEGORY_OPTION
+          : GENERAL_CATEGORY_OPTION
+      );
+      setSelectedFolder(link.folder_id || GENERAL_FOLDER_OPTION);
       setUseSubheading(link.subheading_id ? 'ya' : 'tidak');
       setSelectedSubheading(link.subheading_id || '');
     }
-  }, [link]);
+  }, [folders, link]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,12 +99,33 @@ function EditLinkContent() {
       return;
     }
 
+    if (
+      selectedCategory === UNCATEGORIZED_CATEGORY_OPTION &&
+      selectedFolder === GENERAL_FOLDER_OPTION
+    ) {
+      alert('Pilih folder terlebih dahulu!');
+      return;
+    }
+
     if (!linkId) return;
 
     const linkData = {
       link_id: linkId,
-      folder_id: selectedFolder === 'umum' ? null : selectedFolder,
-      subheading_id: useSubheading === 'ya' ? selectedSubheading : null,
+      category_id:
+        selectedCategory !== GENERAL_CATEGORY_OPTION &&
+        selectedCategory !== UNCATEGORIZED_CATEGORY_OPTION &&
+        selectedFolder === GENERAL_FOLDER_OPTION
+          ? selectedCategory
+          : null,
+      folder_id:
+        selectedCategory === GENERAL_CATEGORY_OPTION ||
+        selectedFolder === GENERAL_FOLDER_OPTION
+          ? null
+          : selectedFolder,
+      subheading_id:
+        selectedFolder === GENERAL_FOLDER_OPTION || useSubheading !== 'ya'
+          ? null
+          : selectedSubheading,
       title: linkTitle,
       link: linkUrl,
     };
@@ -89,7 +139,7 @@ function EditLinkContent() {
   };
 
   const isLoading =
-    isLoadingLink || isLoadingFolders || isLoadingSubheadings || isUpdating;
+    isLoadingLink || isLoadingCategories || isLoadingFolders || isLoadingSubheadings || isUpdating;
 
   const handleBack = () => {
     router.push('/links/admin/links');
@@ -116,14 +166,19 @@ function EditLinkContent() {
             onSubmit={handleSubmit}
             className='space-y-4 bg-white/10 p-6 rounded-lg backdrop-blur-sm'
           >
-            {/* 1. Link Umum/Departemen Selection */}
+            {/* 1. Kategori */}
             <div className='space-y-2'>
               <label className='block text-gray-100 text-sm font-medium'>
-                Link Umum/Departemen
+                Kategori
               </label>
               <select
-                value={selectedFolder}
-                onChange={(e) => setSelectedFolder(e.target.value)}
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setSelectedFolder(GENERAL_FOLDER_OPTION);
+                  setUseSubheading('tidak');
+                  setSelectedSubheading('');
+                }}
                 className='w-full px-4 py-3 rounded-lg bg-blue-700 text-white border-none focus:ring-2 focus:ring-blue-500 appearance-none'
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
@@ -133,18 +188,56 @@ function EditLinkContent() {
                   paddingRight: '2.5rem',
                 }}
               >
-                <option value=''>Pilih Lokasi Link</option>
-                <option value='umum'>Link Umum</option>
-                {folders.map((folder) => (
-                  <option key={folder.folder_id} value={folder.folder_id}>
-                    {folder.title}
+                <option value={GENERAL_CATEGORY_OPTION}>Link tanpa folder</option>
+                {categories.map((category) => (
+                  <option key={category.category_id} value={category.category_id}>
+                    {category.title}
                   </option>
                 ))}
+                {hasUncategorizedFolders && (
+                  <option value={UNCATEGORIZED_CATEGORY_OPTION}>Tanpa kategori</option>
+                )}
               </select>
             </div>
 
-            {/* 2. Pakai Subheading Toggle */}
-            {selectedFolder && selectedFolder !== 'umum' && (
+            {/* 2. Folder */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION && (
+              <div className='space-y-2'>
+                <label className='block text-gray-100 text-sm font-medium'>
+                  Folder
+                </label>
+                <select
+                  value={selectedFolder}
+                  onChange={(e) => {
+                    setSelectedFolder(e.target.value);
+                    setUseSubheading('tidak');
+                    setSelectedSubheading('');
+                  }}
+                  className='w-full px-4 py-3 rounded-lg bg-blue-700 text-white border-none focus:ring-2 focus:ring-blue-500 appearance-none'
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem',
+                  }}
+                >
+                  <option value={GENERAL_FOLDER_OPTION}>
+                    {selectedCategory === UNCATEGORIZED_CATEGORY_OPTION
+                      ? 'Pilih folder'
+                      : 'Langsung di kategori ini'}
+                  </option>
+                  {filteredFolders.map((folder) => (
+                    <option key={folder.folder_id} value={folder.folder_id}>
+                      {folder.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* 3. Pakai Subheading Toggle */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION && (
               <div className='space-y-2'>
                 <label className='block text-gray-100 text-sm font-medium'>
                   Pakai Subheading atau Tidak
@@ -167,9 +260,8 @@ function EditLinkContent() {
               </div>
             )}
 
-            {/* 3. Pilih Subheading */}
-            {selectedFolder &&
-              selectedFolder !== 'umum' &&
+            {/* 4. Pilih Subheading */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION &&
               useSubheading === 'ya' && (
                 <div className='space-y-2'>
                   <label className='block text-gray-100 text-sm font-medium'>
@@ -197,7 +289,7 @@ function EditLinkContent() {
                 </div>
               )}
 
-            {/* 4. Judul Link */}
+            {/* 5. Judul Link */}
             <div className='space-y-2'>
               <label className='block text-gray-100 text-sm font-medium'>
                 Judul Link
@@ -211,7 +303,7 @@ function EditLinkContent() {
               />
             </div>
 
-            {/* 5. Link URL */}
+            {/* 6. Link URL */}
             <div className='space-y-2'>
               <label className='block text-gray-100 text-sm font-medium'>
                 Link yang ingin ditambahkan

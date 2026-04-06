@@ -6,18 +6,26 @@ import * as React from 'react';
 import BackButton from '@/components/BackButton';
 import Typography from '@/components/Typography';
 
+import { useGetCategories } from '@/app/links/hook/useCategory';
 import { useGetFolders } from '@/app/links/hook/useFolder';
 import { useCreateLink } from '@/app/links/hook/useLink';
 import { useGetSubheadings } from '@/app/links/hook/useSubheading';
+
+const GENERAL_CATEGORY_OPTION = '__general_category__';
+const UNCATEGORIZED_CATEGORY_OPTION = '__uncategorized_category__';
+const GENERAL_FOLDER_OPTION = '__general__';
+const NO_SUBHEADING_OPTION = '__no_subheading__';
 
 export default function AddLinkPage() {
   const router = useRouter();
 
   const { mutateAsync: createLink } = useCreateLink();
+  const { data: categories, fetchCategories } = useGetCategories();
   const { data: folders, fetchFolders } = useGetFolders();
   const { data: subheadings, fetchSubheadings } = useGetSubheadings();
 
   // Form state
+  const [selectedCategory, setSelectedCategory] = React.useState<string>(GENERAL_CATEGORY_OPTION);
   const [selectedFolder, setSelectedFolder] = React.useState<string>('');
   const [useSubheading, setUseSubheading] = React.useState<string>('tidak');
   const [selectedSubheading, setSelectedSubheading] =
@@ -27,14 +35,28 @@ export default function AddLinkPage() {
 
   // Filtered subheadings based on selected folder
   const filteredSubheadings = React.useMemo(() => {
-    if (!selectedFolder || selectedFolder === 'umum' || !subheadings) return [];
+    if (!selectedFolder || selectedFolder === GENERAL_FOLDER_OPTION || !subheadings) return [];
     return subheadings.filter((sub) => sub.folder_id === selectedFolder);
   }, [selectedFolder, subheadings]);
 
+  const filteredFolders = React.useMemo(() => {
+    if (selectedCategory === GENERAL_CATEGORY_OPTION) return [];
+    if (selectedCategory === UNCATEGORIZED_CATEGORY_OPTION) {
+      return folders.filter((folder) => !folder.category_id);
+    }
+    return folders.filter((folder) => folder.category_id === selectedCategory);
+  }, [folders, selectedCategory]);
+
+  const hasUncategorizedFolders = React.useMemo(
+    () => folders.some((folder) => !folder.category_id),
+    [folders]
+  );
+
   React.useEffect(() => {
+    fetchCategories();
     fetchFolders();
     fetchSubheadings();
-  }, [fetchFolders, fetchSubheadings]);
+  }, [fetchCategories, fetchFolders, fetchSubheadings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,10 +67,31 @@ export default function AddLinkPage() {
       return;
     }
 
+    if (
+      selectedCategory === UNCATEGORIZED_CATEGORY_OPTION &&
+      selectedFolder === GENERAL_FOLDER_OPTION
+    ) {
+      alert('Pilih folder terlebih dahulu!');
+      return;
+    }
+
     // Prepare data
     const linkData = {
-      folder_id: selectedFolder === 'umum' ? null : selectedFolder,
-      subheading_id: useSubheading === 'ya' ? selectedSubheading : null,
+      category_id:
+        selectedCategory !== GENERAL_CATEGORY_OPTION &&
+        selectedCategory !== UNCATEGORIZED_CATEGORY_OPTION &&
+        selectedFolder === GENERAL_FOLDER_OPTION
+          ? selectedCategory
+          : null,
+      folder_id:
+        selectedCategory === GENERAL_CATEGORY_OPTION ||
+        selectedFolder === GENERAL_FOLDER_OPTION
+          ? null
+          : selectedFolder,
+      subheading_id:
+        selectedFolder === GENERAL_FOLDER_OPTION || useSubheading !== 'ya'
+          ? null
+          : selectedSubheading,
       title: linkTitle,
       link: linkUrl,
       weight: 0, // Default weight
@@ -90,32 +133,35 @@ export default function AddLinkPage() {
             onSubmit={handleSubmit}
             className='space-y-6 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl'
           >
-            {/* 1. Link Umum/Departemen Selection */}
+            {/* 1. Kategori */}
             <div className='space-y-2'>
               <label className='block text-gray-200 text-sm font-medium ml-1'>
-                Link Umum/Departemen
+                Kategori
               </label>
               <div className='relative'>
                 <select
-                  value={selectedFolder}
-                  onChange={(e) => setSelectedFolder(e.target.value)}
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setSelectedFolder(GENERAL_FOLDER_OPTION);
+                    setUseSubheading('tidak');
+                    setSelectedSubheading('');
+                  }}
                   className='w-full px-4 py-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors appearance-none outline-none'
                 >
-                  <option value='' className='bg-gray-800 text-gray-300'>
-                    Pilih Lokasi Link
+                  <option value={GENERAL_CATEGORY_OPTION} className='bg-gray-800 text-gray-300'>
+                    Link tanpa folder
                   </option>
-                  <option value='umum' className='bg-gray-800 text-white'>
-                    Link Umum
-                  </option>
-                  {folders.map((folder) => (
-                    <option
-                      key={folder.folder_id}
-                      value={folder.folder_id}
-                      className='bg-gray-800 text-white'
-                    >
-                      {folder.title}
+                  {categories.map((category) => (
+                    <option key={category.category_id} value={category.category_id} className='bg-gray-800 text-white'>
+                      {category.title}
                     </option>
                   ))}
+                  {hasUncategorizedFolders && (
+                    <option value={UNCATEGORIZED_CATEGORY_OPTION} className='bg-gray-800 text-white'>
+                      Tanpa kategori
+                    </option>
+                  )}
                 </select>
                 <div className='absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400'>
                   <svg
@@ -135,8 +181,58 @@ export default function AddLinkPage() {
               </div>
             </div>
 
-            {/* 2. Pakai Subheading Toggle */}
-            {selectedFolder && selectedFolder !== 'umum' && (
+            {/* 2. Folder */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION && (
+              <div className='space-y-2 animate-fade-in'>
+                <label className='block text-gray-200 text-sm font-medium ml-1'>
+                  Folder
+                </label>
+                <div className='relative'>
+                  <select
+                    value={selectedFolder}
+                    onChange={(e) => {
+                      setSelectedFolder(e.target.value);
+                      setUseSubheading('tidak');
+                      setSelectedSubheading('');
+                    }}
+                    className='w-full px-4 py-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors appearance-none outline-none'
+                  >
+                    <option value={GENERAL_FOLDER_OPTION} className='bg-gray-800 text-gray-300'>
+                      {selectedCategory === UNCATEGORIZED_CATEGORY_OPTION
+                        ? 'Pilih folder'
+                        : 'Langsung di kategori ini'}
+                    </option>
+                    {filteredFolders.map((folder) => (
+                      <option
+                        key={folder.folder_id}
+                        value={folder.folder_id}
+                        className='bg-gray-800 text-white'
+                      >
+                        {folder.title}
+                      </option>
+                    ))}
+                  </select>
+                  <div className='absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400'>
+                    <svg
+                      className='w-5 h-5'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M19 9l-7 7-7-7'
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Pakai Subheading Toggle */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION && (
               <div className='space-y-2 animate-fade-in'>
                 <label className='block text-gray-200 text-sm font-medium ml-1'>
                   Pakai Subheading atau Tidak
@@ -173,9 +269,8 @@ export default function AddLinkPage() {
               </div>
             )}
 
-            {/* 3. Pilih Subheading */}
-            {selectedFolder &&
-              selectedFolder !== 'umum' &&
+            {/* 4. Pilih Subheading */}
+            {selectedCategory !== GENERAL_CATEGORY_OPTION &&
               useSubheading === 'ya' && (
                 <div className='space-y-2 animate-fade-in'>
                   <label className='block text-gray-200 text-sm font-medium ml-1'>
@@ -219,7 +314,7 @@ export default function AddLinkPage() {
                 </div>
               )}
 
-            {/* 4. Judul Link */}
+            {/* 5. Judul Link */}
             <div className='space-y-2'>
               <label className='block text-gray-200 text-sm font-medium ml-1'>
                 Judul Link
@@ -233,7 +328,7 @@ export default function AddLinkPage() {
               />
             </div>
 
-            {/* 5. Link URL */}
+            {/* 6. Link URL */}
             <div className='space-y-2'>
               <label className='block text-gray-200 text-sm font-medium ml-1'>
                 Link yang ingin ditambahkan
