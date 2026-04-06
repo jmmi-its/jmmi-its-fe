@@ -82,7 +82,7 @@ function FolderViewContent() {
       return;
     }
 
-    if (error) {
+    if (errorStatus === 404) {
       setNotFound(true);
     }
   }, [
@@ -161,7 +161,7 @@ function FolderViewContent() {
     );
   }
 
-  if (notFound || !folderData?.folder) {
+  if (notFound) {
     return (
       <div className='min-h-screen flex items-center justify-center flex-col gap-4'>
         <Typography className='text-white'>Folder not found</Typography>
@@ -171,6 +171,14 @@ function FolderViewContent() {
         >
           Back to Links
         </button>
+      </div>
+    );
+  }
+
+  if (!folderData?.folder) {
+    return (
+      <div className='min-h-screen flex items-center justify-center'>
+        <Typography className='text-white'>Loading...</Typography>
       </div>
     );
   }
