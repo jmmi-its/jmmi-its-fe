@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { Lock } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -27,12 +27,14 @@ export default function FolderCard({
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [inputKey, setInputKey] = React.useState('');
+  const [showKey, setShowKey] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleClick = () => {
     if (isLocked) {
       setInputKey('');
+      setShowKey(false);
       setErrorMessage('');
       setIsModalOpen(true);
       return;
@@ -44,6 +46,7 @@ export default function FolderCard({
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setInputKey('');
+    setShowKey(false);
     setErrorMessage('');
     setIsSubmitting(false);
   };
@@ -113,18 +116,28 @@ export default function FolderCard({
               <label htmlFor={`folder-key-${folderId}`} className='text-xs font-semibold uppercase tracking-wider text-slate-500'>
                 Key Folder
               </label>
-              <input
-                id={`folder-key-${folderId}`}
-                type='password'
-                value={inputKey}
-                onChange={(event) => {
-                  setInputKey(event.target.value);
-                  if (errorMessage) setErrorMessage('');
-                }}
-                placeholder='Masukkan key'
-                autoFocus
-                className='w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-brand-green-500'
-              />
+              <div className='relative'>
+                <input
+                  id={`folder-key-${folderId}`}
+                  type={showKey ? 'text' : 'password'}
+                  value={inputKey}
+                  onChange={(event) => {
+                    setInputKey(event.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
+                  placeholder='Masukkan key'
+                  autoFocus
+                  className='w-full rounded-xl border border-slate-300 px-3 py-2.5 pr-12 text-sm outline-none transition focus:border-brand-green-500'
+                />
+                <button
+                  type='button'
+                  onClick={() => setShowKey((prev) => !prev)}
+                  aria-label={showKey ? 'Sembunyikan key folder' : 'Tampilkan key folder'}
+                  className='absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 transition-colors hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-green-500'
+                >
+                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errorMessage && (
                 <p className='text-xs text-red-600'>{errorMessage}</p>
               )}
