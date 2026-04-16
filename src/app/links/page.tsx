@@ -11,6 +11,8 @@ import Typography from '@/components/Typography';
 
 import { useGetLinksHomepage } from '@/app/links/hook/useLink';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
 import { Folder, Link } from '@/types/entities/links';
 
 export default function LinksPage() {
@@ -124,7 +126,7 @@ export default function LinksPage() {
                   <LinkButton
                     key={link.link_id}
                     title={link.title}
-                    url={link.link}
+                    url={getLinkTargetUrl(link)}
                     variant='blue'
                   />
                 ))}
@@ -168,7 +170,7 @@ export default function LinksPage() {
                       <LinkButton
                         key={link.link_id}
                         title={link.title}
-                        url={link.link}
+                        url={getLinkTargetUrl(link)}
                         variant='blue'
                       />
                     ))}

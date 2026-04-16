@@ -14,6 +14,8 @@ import Typography from '@/components/Typography';
 
 import { useGetFolderById } from '@/app/links/hook/useFolder';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
 import { Link, SubheadingWithLinks } from '@/types/entities/links';
 
 function FolderViewContent() {
@@ -296,7 +298,7 @@ function FolderViewContent() {
                 <LinkButton
                   key={link.link_id}
                   title={link.title}
-                  url={link.link}
+                  url={getLinkTargetUrl(link)}
                   variant='blue'
                 />
               ))}

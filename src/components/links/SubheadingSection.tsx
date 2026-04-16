@@ -3,6 +3,8 @@ import * as React from 'react';
 import LinkButton from '@/components/links/LinkButton';
 import Typography from '@/components/Typography';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
 import { Link } from '@/types/entities/links';
 
 interface SubheadingSectionProps {
@@ -43,7 +45,7 @@ export default function SubheadingSection({
           <LinkButton
             key={link.link_id}
             title={link.title}
-            url={link.link}
+            url={getLinkTargetUrl(link)}
             variant='blue'
           />
         ))}

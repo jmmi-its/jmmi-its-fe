@@ -9,6 +9,8 @@ import Typography from '@/components/Typography';
 
 import { useGetLinks } from '@/app/links/hook/useLink';
 
+import { buildShortUrl } from '@/lib/link-url';
+
 import { Link } from '@/types/entities/links';
 
 export default function LinksListPage() {
@@ -117,15 +119,14 @@ export default function LinksListPage() {
                     <Typography className='text-gray-400 text-sm mt-0.5 truncate group-hover:text-gray-300'>
                       {item.link}
                     </Typography>
+                    <Typography className='mt-1 text-xs text-emerald-300/90 truncate'>
+                      Short: {buildShortUrl(item.short_path)}
+                    </Typography>
                   </div>
                   <span
-                    className={`text-xs px-3 py-1 rounded-full font-medium shrink-0 border ${
-                      item.folder_id
-                        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                    }`}
+                    className='text-xs px-3 py-1 rounded-full font-medium shrink-0 border bg-white/10 text-white border-white/15'
                   >
-                    {item.folder_id ? 'Folder' : 'Umum'}
+                    Klik {item.click_count}
                   </span>
                 </button>
               ))

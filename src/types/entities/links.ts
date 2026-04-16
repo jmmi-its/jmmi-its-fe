@@ -29,9 +29,12 @@ export interface Link {
   category_id: string | null;
   folder_id: string | null;
   subheading_id: string | null;
+  short_code: string;
+  short_path: string;
   title: string;
   link: string; // The URL
   weight: number;
+  click_count: number;
   timestamp: string;
 }
 
@@ -82,6 +85,7 @@ export interface CreateLinkRequest {
   title: string;
   link: string;
   weight: number;
+  short_code?: string | null;
   folder_id?: string | null;
   subheading_id?: string | null;
 }
