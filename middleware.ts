@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/links'
 
-    return NextResponse.rewrite(url)
+    return NextResponse.redirect(url)
   }
 
   return NextResponse.next()
