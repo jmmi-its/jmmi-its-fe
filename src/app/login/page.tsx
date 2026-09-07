@@ -20,15 +20,21 @@ export default function AdminLoginPage() {
   const isAuthed = useAuthStore.useIsAuthed();
   const { mutate: adminLogin, isPending } = useAdminLogin();
 
+  const user = useAuthStore.useUser();
+
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
     if (isAuthed && isClient) {
-      router.push('/admin');
+      if (user?.role === 'fungsio') {
+        router.replace('/admin/shortlinks');
+      } else {
+        router.replace('/admin');
+      }
     }
-  }, [isAuthed, isClient, router]);
+  }, [isAuthed, isClient, router, user?.role]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,17 +48,22 @@ export default function AdminLoginPage() {
       { email, password },
       {
         onSuccess: (data) => {
+          const userRole = data.role || 'admin';
           const userData = {
             id: data.id,
             email: data.email,
             name: data.name,
-            role: 'ADMIN',
+            role: userRole,
             access_token: data.access_token,
             refresh_token: data.refresh_token,
           };
           login(userData);
           showToast('Login successful! Redirecting...', SUCCESS_TOAST);
-          router.replace('/admin');
+          if (userRole === 'fungsio') {
+            router.replace('/admin/shortlinks');
+          } else {
+            router.replace('/admin');
+          }
         },
         onError: (error: any) => {
           const message =

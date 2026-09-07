@@ -10,6 +10,7 @@ interface LoginResponse {
   id: string;
   email: string;
   name: string;
+  role: string;
   access_token: string;
   refresh_token: string;
 }
@@ -39,6 +40,7 @@ export function useVerifyAdminToken(token?: string) {
           id: string;
           email: string;
           name: string;
+          role: string;
         };
       }>('/auth/verify', undefined, {
         headers: {

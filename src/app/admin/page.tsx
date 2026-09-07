@@ -330,6 +330,10 @@ export default function AdminDashboard() {
   const { data: reportData } = useGetFinanceReport();
   const { data: calendarPagination } = useGetAllCalendarEvents(1, 50);
 
+  if (user?.role?.toLowerCase() === 'fungsio') {
+    return null;
+  }
+
   const transactions = reportData?.transactions || [];
   const calendarEvents = calendarPagination?.data || [];
 

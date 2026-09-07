@@ -13,12 +13,14 @@ import {
   ChevronRight,
   LogOut,
   Menu,
-  Settings2,
+  Users,
   X,
 } from 'lucide-react';
 
 import Button from '@/components/buttons/Button';
 import { cn } from '@/lib/utils';
+
+export type UserRole = 'superadmin' | 'admin' | 'fungsio';
 
 type AdminMenuItem = {
   label: string;
@@ -26,6 +28,7 @@ type AdminMenuItem = {
   description: string;
   icon: LucideIcon;
   disabled?: boolean;
+  roles?: UserRole[];
 };
 
 const menuItems: AdminMenuItem[] = [
@@ -34,47 +37,72 @@ const menuItems: AdminMenuItem[] = [
     href: '/admin',
     description: 'Ringkasan overview dan event reminder',
     icon: BarChart3,
+    roles: ['superadmin', 'admin'],
   },
   {
     label: 'Keuangan',
     href: '/admin/keuangan',
     description: 'Manajemen transaksi dan laporan saldo',
     icon: BarChart3,
+    roles: ['superadmin', 'admin'],
   },
   {
     label: 'Link',
     href: '/admin/links',
     description: 'Kategori, folder, dan sumber daya',
     icon: Link2,
+    roles: ['superadmin', 'admin', 'fungsio'],
   },
   {
     label: 'Shorten Link',
     href: '/admin/shortlinks',
     description: 'URL shortener mandiri',
     icon: Link2,
+    roles: ['superadmin', 'admin', 'fungsio'],
   },
-
   {
     label: 'Kalender',
     href: '/admin/kalender',
     description: 'Agenda dan tenggat yang akan datang',
     icon: CalendarDays,
+    roles: ['superadmin', 'admin', 'fungsio'],
   },
   {
-    label: 'Settings',
-    href: '/admin/settings',
-    description: 'Preferensi panel dan kontrol akses',
-    icon: Settings2,
-    disabled: true,
+    label: 'Manajemen Akun',
+    href: '/admin/users',
+    description: 'Kelola pengguna dan hak akses',
+    icon: Users,
+    roles: ['superadmin'],
   },
 ];
 
+export function getRoleBadge(role?: string) {
+  const normalized = (role || '').toLowerCase();
+  if (normalized === 'superadmin') {
+    return {
+      label: 'Superadmin',
+      badgeClass: 'bg-amber-400/20 text-amber-200 border-amber-400/30',
+    };
+  }
+  if (normalized === 'fungsio') {
+    return {
+      label: 'Fungsionaris',
+      badgeClass: 'bg-emerald-400/20 text-emerald-200 border-emerald-400/30',
+    };
+  }
+  return {
+    label: 'Admin',
+    badgeClass: 'bg-sky-400/20 text-sky-200 border-sky-400/30',
+  };
+}
+
 type AdminSidebarProps = {
   userName?: string;
+  userRole?: string;
   onLogout: () => void;
 };
 
-export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) {
+export default function AdminSidebar({ userName, userRole, onLogout }: AdminSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -106,10 +134,18 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
     };
   }, [isMobileOpen]);
 
+  const roleBadge = getRoleBadge(userRole);
+
   const renderNavigation = (collapsed: boolean, onNavigate?: () => void) => {
+    const filteredItems = menuItems.filter((item) => {
+      if (!item.roles) return true;
+      const normalizedRole = (userRole || 'admin').toLowerCase() as UserRole;
+      return item.roles.includes(normalizedRole);
+    });
+
     return (
       <nav className='space-y-2'>
-        {menuItems.map((item) => {
+        {filteredItems.map((item) => {
           const Icon = item.icon;
           const isActive =
             pathname === item.href ||
@@ -259,10 +295,20 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
 
           <div className='border-t border-white/15 px-4 py-4'>
             <div className='rounded-2xl bg-white/10 p-4 ring-1 ring-white/15'>
-              <p className='font-sora text-[10px] font-bold uppercase tracking-wider text-white/60'>
-                Pengurus Terautentikasi
-              </p>
-              <p className='mt-1 font-sora text-sm font-bold text-white'>{userName || 'Admin JMMI'}</p>
+              <div className='flex items-center justify-between gap-2'>
+                <p className='font-sora text-[10px] font-bold uppercase tracking-wider text-white/60'>
+                  Pengurus
+                </p>
+                <span
+                  className={cn(
+                    'rounded-full border px-2 py-0.5 font-sora text-[10px] font-semibold uppercase tracking-wider',
+                    roleBadge.badgeClass
+                  )}
+                >
+                  {roleBadge.label}
+                </span>
+              </div>
+              <p className='mt-1.5 font-sora text-sm font-bold text-white truncate'>{userName || 'Admin JMMI'}</p>
               <Button
                 type='button'
                 variant='outline'
@@ -353,10 +399,20 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
           <div className={cn('rounded-2xl bg-white/10 ring-1 ring-white/15', isCollapsed ? 'p-2' : 'p-4')}>
             {!isCollapsed && (
               <>
-                <p className='font-sora text-[10px] font-extrabold uppercase tracking-wider text-white/60'>
-                  Pengurus Terautentikasi
-                </p>
-                <p className='mt-1 font-sora text-sm font-bold text-white truncate'>{userName || 'Admin JMMI'}</p>
+                <div className='flex items-center justify-between gap-2'>
+                  <p className='font-sora text-[10px] font-extrabold uppercase tracking-wider text-white/60'>
+                    Pengurus
+                  </p>
+                  <span
+                    className={cn(
+                      'rounded-full border px-2 py-0.5 font-sora text-[10px] font-semibold uppercase tracking-wider',
+                      roleBadge.badgeClass
+                    )}
+                  >
+                    {roleBadge.label}
+                  </span>
+                </div>
+                <p className='mt-1.5 font-sora text-sm font-bold text-white truncate'>{userName || 'Admin JMMI'}</p>
               </>
             )}
             <Button

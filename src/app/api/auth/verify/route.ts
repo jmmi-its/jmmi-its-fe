@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
         id: admin.id,
         email: admin.email,
         name: admin.name,
+        role: admin.role,
       },
     });
   } catch {

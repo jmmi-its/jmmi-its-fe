@@ -27,6 +27,7 @@ export class AuthService {
       {
         adminId: admin.id,
         email: admin.email,
+        role: admin.role,
         type: 'access',
       },
       config.jwtSecret,
@@ -37,6 +38,7 @@ export class AuthService {
       {
         adminId: admin.id,
         email: admin.email,
+        role: admin.role,
         type: 'refresh',
       },
       config.jwtSecret,
@@ -47,6 +49,7 @@ export class AuthService {
       id: admin.id,
       email: admin.email,
       name: admin.name,
+      role: admin.role,
       access_token,
       refresh_token,
     };
@@ -56,6 +59,7 @@ export class AuthService {
     try {
       const decoded = jwt.verify(token, config.jwtSecret) as {
         adminId?: string;
+        role?: string;
         type?: string;
       };
 
@@ -73,7 +77,12 @@ export class AuthService {
     }
   }
 
-  async register(email: string, password: string, name: string): Promise<LoginResponse | null> {
+  async register(
+    email: string,
+    password: string,
+    name: string,
+    role: string = 'admin'
+  ): Promise<LoginResponse | null> {
     const existingAdmin = await prisma.admin.findUnique({
       where: { email },
     });
@@ -89,6 +98,7 @@ export class AuthService {
         email,
         name,
         password: hashedPassword,
+        role,
       },
     });
 

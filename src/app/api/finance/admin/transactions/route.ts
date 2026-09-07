@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FinanceService } from '@/lib/api/services/finance-service';
-import { requireAuth } from '@/lib/api/auth';
+import { requireRole } from '@/lib/api/auth';
 
 const service = new FinanceService();
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ['superadmin', 'admin']);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ['superadmin', 'admin']);
   if (auth instanceof NextResponse) return auth;
 
   try {

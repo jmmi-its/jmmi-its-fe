@@ -5,6 +5,15 @@ const PrismaClient: any = (pkg as any).PrismaClient ?? (pkg as any).default ?? p
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
+import dns from 'dns';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+try { require('dotenv').config(); } catch {}
+
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -23,27 +32,44 @@ async function main(): Promise<void> {
     SALT_ROUNDS
   );
 
-  // Seed Admin
+  // Seed Admin & Roles
   const admins = [
     {
-      email: 'admin1@jmmi.com',
+      email: 'superadmin@jmmi.com',
       password: hashedPassword,
-      name: 'Wakil Bidang 1',
+      name: 'Superadmin JMMI',
+      role: 'superadmin',
     },
     {
       email: 'admin@jmmi.com',
       password: hashedPassword,
       name: 'Admin JMMI',
-    }
-  ]
+      role: 'admin',
+    },
+    {
+      email: 'admin1@jmmi.com',
+      password: hashedPassword,
+      name: 'Wakil Bidang 1',
+      role: 'admin',
+    },
+    {
+      email: 'fungsio@jmmi.com',
+      password: hashedPassword,
+      name: 'Fungsionaris JMMI',
+      role: 'fungsio',
+    },
+  ];
 
   for (const adminData of admins) {
     const admin = await prisma.admin.upsert({
       where: { email: adminData.email },
-      update: {},
+      update: {
+        role: adminData.role,
+        name: adminData.name,
+      },
       create: adminData,
     });
-    console.log(`Created admin: ${admin.name}`);
+    console.log(`Created/updated admin: ${admin.name} (${admin.role})`);
   }
 
   const staffAnnouncements = [
