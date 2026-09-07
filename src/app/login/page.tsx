@@ -28,13 +28,9 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (isAuthed && isClient) {
-      if (user?.role === 'fungsio') {
-        router.replace('/admin/shortlinks');
-      } else {
-        router.replace('/admin');
-      }
+      router.replace('/admin');
     }
-  }, [isAuthed, isClient, router, user?.role]);
+  }, [isAuthed, isClient, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,11 +55,7 @@ export default function AdminLoginPage() {
           };
           login(userData);
           showToast('Login successful! Redirecting...', SUCCESS_TOAST);
-          if (userRole === 'fungsio') {
-            router.replace('/admin/shortlinks');
-          } else {
-            router.replace('/admin');
-          }
+          router.replace('/admin');
         },
         onError: (error: any) => {
           const message =

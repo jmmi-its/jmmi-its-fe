@@ -37,7 +37,7 @@ const menuItems: AdminMenuItem[] = [
     href: '/admin',
     description: 'Ringkasan overview dan event reminder',
     icon: BarChart3,
-    roles: ['superadmin', 'admin'],
+    roles: ['superadmin', 'admin', 'fungsio'],
   },
   {
     label: 'Keuangan',

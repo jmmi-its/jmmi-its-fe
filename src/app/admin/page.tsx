@@ -1,18 +1,32 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import {
   BarChart3,
   CalendarClock,
+  CalendarDays,
+  Check,
   CircleDollarSign,
+  Copy,
+  ExternalLink,
+  Layers,
+  Link2,
+  MousePointerClick,
+  Plus,
+  Shield,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
 
 import { useGetFinanceReport } from './hook/useFinance';
 import { useGetAllCalendarEvents } from './hook/useCalendar';
+import { useGetShortLinks } from '@/app/links/hook/useShortLink';
+import { useGetCategories } from '@/app/links/hook/useCategory';
 import useAuthStore from '@/stores/useAuthStore';
+import { showToast, SUCCESS_TOAST } from '@/components/Toast';
+import { cn } from '@/lib/utils';
 
 type MonthlyPoint = {
   key: string;
@@ -220,14 +234,15 @@ function MetricCard({
   title: string;
   value: string;
   description: string;
-  icon: typeof BarChart3;
-  tone: 'emerald' | 'rose' | 'amber' | 'slate';
+  icon: any;
+  tone: 'emerald' | 'rose' | 'amber' | 'slate' | 'sky';
 }) {
   const toneClasses = {
     emerald: 'bg-[#146637]/10 text-[#146637]',
     rose: 'bg-rose-50 text-rose-600',
     amber: 'bg-amber-50 text-amber-600',
     slate: 'bg-slate-100 text-slate-700',
+    sky: 'bg-sky-50 text-sky-600',
   };
 
   return (
@@ -325,14 +340,250 @@ function UpcomingEventCard({ events }: { events: ReminderEvent[] }) {
 }
 
 
+function FungsioDashboardView({
+  userName,
+  reminderEvents,
+}: {
+  userName?: string;
+  reminderEvents: ReminderEvent[];
+}) {
+  const { shortLinks = [], total: totalShortLinks = 0 } = useGetShortLinks(1, 100);
+  const { data: categories = [] } = useGetCategories();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Calculate total clicks across all shortlinks
+  const totalClicks = useMemo(() => {
+    return shortLinks.reduce((acc, link) => acc + (link.click_count || 0), 0);
+  }, [shortLinks]);
+
+  // Sort shortlinks by click count descending (top 5)
+  const topShortLinks = useMemo(() => {
+    return [...shortLinks]
+      .sort((a, b) => (b.click_count || 0) - (a.click_count || 0))
+      .slice(0, 5);
+  }, [shortLinks]);
+
+  // Maximum clicks for percentage bar
+  const maxClicks = Math.max(1, topShortLinks[0]?.click_count || 1);
+
+  const handleCopy = (shortCode: string, id: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const fullUrl = `${origin}/s/${shortCode}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedId(id);
+    showToast('Tautan pendek disalin ke clipboard!', SUCCESS_TOAST);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  return (
+    <div className='space-y-8'>
+      {/* Welcome Banner */}
+      <section className='overflow-hidden rounded-[25px] bg-[#146637] p-8 text-white shadow-xl relative'>
+        <div className='max-w-3xl space-y-4 relative z-10'>
+          <div className='inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 font-sora text-xs font-semibold uppercase tracking-wider text-white'>
+            <Shield className='h-4 w-4 text-emerald-300' />
+            <span>Dashboard Fungsionaris JMMI</span>
+          </div>
+          <h1 className='font-sora text-3xl sm:text-4xl font-extrabold tracking-tight'>
+            Ahlan wa Sahlan{userName ? `, ${userName}` : ''}!
+          </h1>
+          <p className='font-hanken text-base text-white/85 leading-relaxed'>
+            Pantau metrik performa tautan pendek (Shortlink), pengingat agenda terdekat, serta pengelolaan sumber daya links pengurus.
+          </p>
+        </div>
+      </section>
+
+      {/* Summary Metrics */}
+      <section className='grid gap-6 md:grid-cols-2 xl:grid-cols-4'>
+        <MetricCard
+          title='Total Shortlink'
+          value={String(totalShortLinks || shortLinks.length)}
+          description='Tautan pendek aktif terdaftar.'
+          icon={Link2}
+          tone='emerald'
+        />
+        <MetricCard
+          title='Total Kunjungan'
+          value={new Intl.NumberFormat('id-ID').format(totalClicks)}
+          description='Akumulasi klik seluruh tautan.'
+          icon={MousePointerClick}
+          tone='amber'
+        />
+        <MetricCard
+          title='Agenda Mendatang'
+          value={String(reminderEvents.length)}
+          description='Kegiatan dalam 7 hari ke depan.'
+          icon={CalendarDays}
+          tone='sky'
+        />
+        <MetricCard
+          title='Kategori Sumber Daya'
+          value={String(categories.length)}
+          description='Kategori & folder links aktif.'
+          icon={Layers}
+          tone='slate'
+        />
+      </section>
+
+      {/* Quick Action Shortcuts */}
+      <section className='rounded-[25px] border border-gray-100 bg-white p-6 shadow-md'>
+        <p className='font-sora text-xs font-semibold uppercase tracking-wider text-[#146637]'>
+          Akses Cepat Pengurus
+        </p>
+        <h2 className='font-sora mt-1 text-xl font-bold text-slate-900'>Navigasi Fitur Fungsionaris</h2>
+        <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3'>
+          <Link
+            href='/admin/shortlinks'
+            className='group flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50/60 p-4 transition-all hover:border-[#146637]/30 hover:bg-[#146637]/5 hover:shadow-sm'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-[#146637] group-hover:bg-[#146637] group-hover:text-white transition-colors'>
+                <Link2 className='h-5 w-5' />
+              </div>
+              <div>
+                <p className='font-sora text-sm font-bold text-slate-900'>Shortlink</p>
+                <p className='font-hanken text-xs text-slate-500'>Buat & kelola short URL</p>
+              </div>
+            </div>
+            <Plus className='h-4 w-4 text-gray-400 group-hover:text-[#146637] transition-colors' />
+          </Link>
+
+          <Link
+            href='/admin/kalender'
+            className='group flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50/60 p-4 transition-all hover:border-[#146637]/30 hover:bg-[#146637]/5 hover:shadow-sm'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700 group-hover:bg-sky-600 group-hover:text-white transition-colors'>
+                <CalendarDays className='h-5 w-5' />
+              </div>
+              <div>
+                <p className='font-sora text-sm font-bold text-slate-900'>Kalender</p>
+                <p className='font-hanken text-xs text-slate-500'>Tambah agenda kegiatan</p>
+              </div>
+            </div>
+            <Plus className='h-4 w-4 text-gray-400 group-hover:text-sky-700 transition-colors' />
+          </Link>
+
+          <Link
+            href='/admin/links'
+            className='group flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50/60 p-4 transition-all hover:border-[#146637]/30 hover:bg-[#146637]/5 hover:shadow-sm'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-600 group-hover:text-white transition-colors'>
+                <Layers className='h-5 w-5' />
+              </div>
+              <div>
+                <p className='font-sora text-sm font-bold text-slate-900'>Resource Links</p>
+                <p className='font-hanken text-xs text-slate-500'>Kelola folder & tautan</p>
+              </div>
+            </div>
+            <ExternalLink className='h-4 w-4 text-gray-400 group-hover:text-amber-700 transition-colors' />
+          </Link>
+        </div>
+      </section>
+
+      {/* Grid: Events & Top Shortlinks */}
+      <div className='grid gap-6 xl:grid-cols-[1fr_1.4fr]'>
+        <UpcomingEventCard events={reminderEvents} />
+
+        {/* Top Shortlinks Card */}
+        <div className='rounded-[25px] border border-gray-100 bg-white p-6 shadow-md'>
+          <div className='flex items-center justify-between'>
+            <div>
+              <p className='font-sora text-xs font-semibold uppercase tracking-wider text-[#146637]'>
+                Performa Kunjungan
+              </p>
+              <h2 className='font-sora mt-1 text-xl sm:text-2xl font-bold text-slate-900'>
+                Shortlink Terpopuler
+              </h2>
+            </div>
+            <Link
+              href='/admin/shortlinks'
+              className='font-sora text-xs font-semibold text-[#146637] hover:underline'
+            >
+              Lihat Semua →
+            </Link>
+          </div>
+
+          <div className='mt-6 space-y-3.5'>
+            {topShortLinks.length === 0 ? (
+              <div className='rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center font-hanken text-slate-500'>
+                Belum ada shortlink yang terdaftar.
+              </div>
+            ) : (
+              topShortLinks.map((item) => {
+                const percent = Math.round(((item.click_count || 0) / maxClicks) * 100);
+                const isCopied = copiedId === item.short_link_id;
+
+                return (
+                  <div
+                    key={item.short_link_id}
+                    className='rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-all hover:bg-gray-50'
+                  >
+                    <div className='flex items-center justify-between gap-3'>
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center gap-2'>
+                          <span className='rounded-lg bg-[#146637]/10 px-2.5 py-0.5 font-sora text-xs font-bold text-[#146637]'>
+                            /{item.short_code}
+                          </span>
+                          <span className='font-sora text-xs font-bold text-slate-700'>
+                            {item.click_count || 0} klik
+                          </span>
+                        </div>
+                        <p className='mt-1 font-hanken text-xs text-slate-500 truncate'>
+                          {item.url}
+                        </p>
+                      </div>
+
+                      <button
+                        type='button'
+                        onClick={() => handleCopy(item.short_code, item.short_link_id)}
+                        className={cn(
+                          'inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 font-sora text-xs font-semibold transition-all',
+                          isCopied
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                            : 'border-gray-200 bg-white text-slate-700 hover:bg-gray-50'
+                        )}
+                        title='Salin short URL'
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className='h-3.5 w-3.5 text-emerald-600' />
+                            <span>Tersalin</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className='h-3.5 w-3.5' />
+                            <span>Salin</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className='mt-2.5 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden'>
+                      <div
+                        className='h-full rounded-full bg-[#146637] transition-all duration-500'
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const user = useAuthStore.useUser();
+  const isFungsio = user?.role?.toLowerCase() === 'fungsio';
+
   const { data: reportData } = useGetFinanceReport();
   const { data: calendarPagination } = useGetAllCalendarEvents(1, 50);
-
-  if (user?.role?.toLowerCase() === 'fungsio') {
-    return null;
-  }
 
   const transactions = reportData?.transactions || [];
   const calendarEvents = calendarPagination?.data || [];
@@ -365,6 +616,15 @@ export default function AdminDashboard() {
          return a.time.localeCompare(b.time);
       });
   }, [calendarEvents]);
+
+  if (isFungsio) {
+    return (
+      <FungsioDashboardView
+        userName={user?.name}
+        reminderEvents={reminderEvents}
+      />
+    );
+  }
 
   return (
     <div className='space-y-8'>

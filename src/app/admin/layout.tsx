@@ -10,7 +10,7 @@ import { showToast, SUCCESS_TOAST, WARNING_TOAST } from '@/components/Toast';
 import { getToken } from '@/lib/cookies';
 import useAuthStore from '@/stores/useAuthStore';
 
-const FUNGSIO_ALLOWED_PATHS = ['/admin/shortlinks', '/admin/kalender', '/admin/links'];
+const FUNGSIO_ALLOWED_PATHS = ['/admin', '/admin/shortlinks', '/admin/kalender', '/admin/links'];
 
 export default function AdminLayout({
   children,
@@ -70,10 +70,10 @@ export default function AdminLayout({
 
       if (!isAllowed) {
         showToast(
-          'Akses terbatas: Akun Fungsionaris hanya dapat mengakses Shortlink, Kalender, dan Links.',
+          'Akses terbatas: Akun Fungsionaris hanya dapat mengakses Dashboard, Shortlink, Kalender, dan Links.',
           WARNING_TOAST
         );
-        router.replace('/admin/shortlinks');
+        router.replace('/admin');
       }
     } else if (normalizedRole === 'admin') {
       if (pathname === '/admin/users' || pathname.startsWith('/admin/users/')) {
