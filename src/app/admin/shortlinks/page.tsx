@@ -385,21 +385,20 @@ export default function ShortLinksAdminPage() {
   if (isLoading && shortLinks.length === 0) return <Loading fullScreen />;
 
   return (
-    <div className='p-6 max-w-6xl mx-auto'>
-      <div className='flex justify-between items-center mb-8'>
+    <div className='space-y-6'>
+      <div className='flex flex-wrap items-end justify-between gap-4 rounded-2xl bg-gradient-to-r from-brand-green-700 to-brand-green-500 p-6 text-white shadow-lg'>
         <div>
-          <Typography as='h1' variant='h4' weight='bold' className='text-slate-800'>
-            Short Links
-          </Typography>
-          <Typography variant='body' className='text-slate-500'>
-            Kelola URL shortener mandiri
-          </Typography>
+          <h1 className='text-2xl font-bold tracking-tight'>Dashboard Shortlink</h1>
+          <p className='mt-2 text-sm text-white/80'>
+            Kelola URL shortener mandiri: buat tautan pendek, pantau jumlah klik, dan kelola target URL.
+          </p>
         </div>
         <Button
-          variant='primary'
+          type='button'
+          variant='light'
           leftIcon={Plus}
           onClick={handleOpenCreate}
-          className='rounded-full shadow-lg shadow-blue-200'
+          className='rounded-xl border-brand-green-200 bg-white font-semibold text-brand-green-700 hover:bg-brand-green-50'
         >
           Buat Short Link
         </Button>

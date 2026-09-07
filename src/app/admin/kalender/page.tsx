@@ -181,22 +181,25 @@ export default function AdminCalendarPage() {
 
   return (
     <div className='space-y-6'>
-      <section className='overflow-hidden rounded-3xl bg-gradient-to-r from-brand-green-700 via-brand-green-700 to-brand-yellow p-6 text-white shadow-lg sm:p-8'>
-        <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-          <div>
-            <p className='text-xs font-semibold uppercase tracking-[0.24em] text-white/80'>Panel kalender</p>
-            <h1 className='mt-2 text-3xl font-semibold tracking-tight'>Kelola event organisasi</h1>
-            <p className='mt-2 text-sm text-white/85'>
-              Tambahkan event publik, atur jadwal, dan tandai event yang berulang.
-            </p>
-          </div>
-          <Button variant='light' leftIcon={Plus} onClick={openCreateForm}>
-            Tambah Event
-          </Button>
+      <div className='flex flex-wrap items-end justify-between gap-4 rounded-2xl bg-gradient-to-r from-brand-green-700 to-brand-green-500 p-6 text-white shadow-lg'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight'>Dashboard Kalender</h1>
+          <p className='mt-2 text-sm text-white/80'>
+            Kelola event organisasi: tambahkan event publik, atur jadwal, dan tandai event yang berulang.
+          </p>
         </div>
-      </section>
+        <Button
+          type='button'
+          variant='light'
+          leftIcon={Plus}
+          onClick={openCreateForm}
+          className='rounded-xl border-brand-green-200 bg-white font-semibold text-brand-green-700 hover:bg-brand-green-50'
+        >
+          Tambah Event
+        </Button>
+      </div>
 
-      <section className='rounded-3xl border border-slate-200 bg-white shadow-sm'>
+      <section className='rounded-2xl border border-slate-200 bg-white shadow-sm'>
         <div className='flex items-center justify-between border-b border-slate-200 px-6 py-5'>
           <div>
             <p className='text-sm font-semibold uppercase tracking-[0.2em] text-brand-green-700'>Daftar event</p>
