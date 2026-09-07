@@ -1,8 +1,9 @@
 'use client';
 
-import * as React from 'react';
-import NextImage from '@/components/NextImage';
 import { Play } from 'lucide-react';
+import * as React from 'react';
+
+import NextImage from '@/components/NextImage';
 
 export interface ProfileVideoSectionProps {
   title?: string;

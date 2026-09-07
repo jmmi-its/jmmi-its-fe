@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
@@ -19,19 +18,23 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import { cn } from '@/lib/utils';
 
 import Button from '@/components/buttons/Button';
 import Loading from '@/components/Loading';
 import { DANGER_TOAST, showToast, SUCCESS_TOAST } from '@/components/Toast';
-import { cn } from '@/lib/utils';
+
 import useAuthStore from '@/stores/useAuthStore';
+
 import {
   AdminUser,
   useCreateUser,
   useDeleteUser,
   useGetAllUsers,
-  useUpdateUser,
   UserRole,
+  useUpdateUser,
 } from '../hook/useUsers';
 
 const ROLE_CONFIG: Record<

@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { Metadata } from 'next';
+import * as React from 'react';
 
 export const metadata: Metadata = {
   title: 'Transparansi Keuangan',

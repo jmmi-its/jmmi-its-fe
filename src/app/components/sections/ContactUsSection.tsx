@@ -1,7 +1,8 @@
 'use client';
 
+import { Instagram, Linkedin,Phone, Send, Twitter } from 'lucide-react';
 import * as React from 'react';
-import { Instagram, Phone, Send, Twitter, Linkedin } from 'lucide-react';
+
 import { DANGER_TOAST, showToast, SUCCESS_TOAST } from '@/components/Toast';
 
 export default function ContactUsSection() {

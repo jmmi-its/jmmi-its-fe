@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { AuthService } from '@/lib/api/services/auth-service';
 
 const authService = new AuthService();

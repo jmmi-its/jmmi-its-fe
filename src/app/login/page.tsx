@@ -1,13 +1,16 @@
 'use client';
 
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import useAuthStore from '@/stores/useAuthStore';
-import Navbar from '@/components/layout/Navbar';
+
 import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar';
+import { DANGER_TOAST, showToast, SUCCESS_TOAST } from '@/components/Toast';
+
+import useAuthStore from '@/stores/useAuthStore';
+
 import { useAdminLogin } from '../admin/hook/useAdmin';
-import { showToast, DANGER_TOAST, SUCCESS_TOAST } from '@/components/Toast';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -19,8 +22,6 @@ export default function AdminLoginPage() {
   const login = useAuthStore.useLogin();
   const isAuthed = useAuthStore.useIsAuthed();
   const { mutate: adminLogin, isPending } = useAdminLogin();
-
-  const user = useAuthStore.useUser();
 
   useEffect(() => {
     setIsClient(true);

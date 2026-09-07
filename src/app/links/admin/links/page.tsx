@@ -9,8 +9,6 @@ import Typography from '@/components/Typography';
 
 import { useGetLinks } from '@/app/links/hook/useLink';
 
-import { buildShortUrl } from '@/lib/link-url';
-
 import { Link } from '@/types/entities/links';
 
 export default function LinksListPage() {

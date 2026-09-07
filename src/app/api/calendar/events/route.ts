@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { CalendarService } from '@/lib/api/services/calendar-service';
 
 const service = new CalendarService();

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import prisma from '@/lib/api/db';
+import { NextRequest, NextResponse } from 'next/server';
+
 import { requireRole } from '@/lib/api/auth';
+import prisma from '@/lib/api/db';
 
 const VALID_ROLES = ['superadmin', 'admin', 'fungsio'];
 

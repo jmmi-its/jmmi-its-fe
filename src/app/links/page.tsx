@@ -2,17 +2,16 @@
 
 import * as React from 'react';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
+import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar';
 import FolderCard from '@/components/links/FolderCard';
 import LinkButton from '@/components/links/LinkButton';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import Loading from '@/components/Loading';
 import { DANGER_TOAST, showToast } from '@/components/Toast';
-import Typography from '@/components/Typography';
 
 import { useGetLinksHomepage } from '@/app/links/hook/useLink';
-
-import { getLinkTargetUrl } from '@/lib/link-url';
 
 import { Folder, Link } from '@/types/entities/links';
 

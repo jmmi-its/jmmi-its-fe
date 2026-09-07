@@ -1,5 +1,6 @@
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
 import config from '../config';
 import prisma from '../db';
 import { AdminModel, LoginResponse } from '../types/auth';
@@ -81,7 +82,7 @@ export class AuthService {
     email: string,
     password: string,
     name: string,
-    role: string = 'admin'
+    role = 'admin'
   ): Promise<LoginResponse | null> {
     const existingAdmin = await prisma.admin.findUnique({
       where: { email },

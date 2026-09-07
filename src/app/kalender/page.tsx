@@ -1,15 +1,15 @@
 'use client';
 
-import * as React from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, LayoutGrid, List, MapPin, Repeat2 } from 'lucide-react';
+import * as React from 'react';
 
 import BackButton from '@/components/BackButton';
-import Loading from '@/components/Loading';
-import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import Typography from '@/components/Typography';
+import Navbar from '@/components/layout/Navbar';
+import Loading from '@/components/Loading';
 
 import { useGetCalendarEvents } from '@/app/kalender/hook/useCalendar';
+
 import { CalendarEvent } from '@/types/entities/calendar';
 
 const RECURRENCE_LABELS = {

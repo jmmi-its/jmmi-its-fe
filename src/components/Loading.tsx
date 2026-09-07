@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { cn } from '@/lib/utils';
+
 import NextImage from '@/components/NextImage';
 
 type LoadingProps = {

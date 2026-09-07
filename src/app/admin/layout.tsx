@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+
+import { getToken } from '@/lib/cookies';
 
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import Loading from '@/components/Loading';
 import { showToast, SUCCESS_TOAST, WARNING_TOAST } from '@/components/Toast';
-import { getToken } from '@/lib/cookies';
+
 import useAuthStore from '@/stores/useAuthStore';
 
 const FUNGSIO_ALLOWED_PATHS = ['/admin', '/admin/shortlinks', '/admin/kalender', '/admin/links'];

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect,useState } from 'react';
+
 import NextImage from '@/components/NextImage';
 
 export interface SliderImage {

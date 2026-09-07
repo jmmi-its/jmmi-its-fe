@@ -1,5 +1,5 @@
+import { BookOpen, HeartHandshake, LucideIcon,ShieldCheck, Users } from 'lucide-react';
 import * as React from 'react';
-import { BookOpen, HeartHandshake, ShieldCheck, Users, LucideIcon } from 'lucide-react';
 
 export interface PillarItem {
   title: string;

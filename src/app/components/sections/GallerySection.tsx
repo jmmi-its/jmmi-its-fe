@@ -1,6 +1,7 @@
-import * as React from 'react';
-import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import * as React from 'react';
+
 import NextImage from '@/components/NextImage';
 
 export interface GalleryItem {

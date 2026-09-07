@@ -1,8 +1,5 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
-
 import {
   BarChart3,
   CalendarClock,
@@ -19,14 +16,20 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
-import { useGetFinanceReport } from './hook/useFinance';
-import { useGetAllCalendarEvents } from './hook/useCalendar';
-import { useGetShortLinks } from '@/app/links/hook/useShortLink';
-import { useGetCategories } from '@/app/links/hook/useCategory';
-import useAuthStore from '@/stores/useAuthStore';
-import { showToast, SUCCESS_TOAST } from '@/components/Toast';
 import { cn } from '@/lib/utils';
+
+import { showToast, SUCCESS_TOAST } from '@/components/Toast';
+
+import useAuthStore from '@/stores/useAuthStore';
+
+import { useGetCategories } from '@/app/links/hook/useCategory';
+import { useGetShortLinks } from '@/app/links/hook/useShortLink';
+
+import { useGetAllCalendarEvents } from './hook/useCalendar';
+import { useGetFinanceReport } from './hook/useFinance';
 
 type MonthlyPoint = {
   key: string;

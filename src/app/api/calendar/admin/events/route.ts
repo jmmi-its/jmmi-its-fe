@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CalendarService } from '@/lib/api/services/calendar-service';
+
 import { requireAuth } from '@/lib/api/auth';
+import { CalendarService } from '@/lib/api/services/calendar-service';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const RECURRENCE_TYPES = ['weekly', 'monthly', 'custom_period'] as const;

@@ -1,18 +1,20 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Plus, RefreshCw } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+
+import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 import Button from '@/components/buttons/Button';
 import { DANGER_TOAST, showToast, SUCCESS_TOAST } from '@/components/Toast';
+
 import { useGetCategories } from '@/app/links/hook/useCategory';
-import { useGetLinks } from '@/app/links/hook/useLink';
 import { useGetFolders } from '@/app/links/hook/useFolder';
+import { useGetLinks } from '@/app/links/hook/useLink';
 import { useGetSubheadings } from '@/app/links/hook/useSubheading';
-import { api } from '@/lib/api';
-import { buildShortUrl } from '@/lib/link-url';
-import { cn } from '@/lib/utils';
+
 import { Link } from '@/types/entities/links';
 
 const GENERAL_FOLDER_OPTION = '__general__';

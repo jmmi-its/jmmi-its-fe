@@ -1,15 +1,12 @@
 'use client';
 
-import * as React from 'react';
-
 import Link from 'next/link';
-
-import Loading from '@/components/Loading';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import Typography from '@/components/Typography';
-
+import * as React from 'react';
 import { IoChevronBack } from 'react-icons/io5';
+
+import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar';
+import Loading from '@/components/Loading';
 
 import { useGetFinanceReport, useGetFinanceTransactions } from '@/app/finance/hook/useFinance';
 

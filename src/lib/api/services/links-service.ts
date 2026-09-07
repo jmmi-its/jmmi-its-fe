@@ -1,25 +1,25 @@
 import { Prisma } from '@prisma/client';
+
 import prisma from '../db';
 import {
   Category,
-  Folder,
-  Subheading,
-  Link,
-  LinksHomepageData,
-  FolderDetailData,
-  CreateCategoryRequest,
-  UpdateCategoryRequest,
-  CreateFolderRequest,
-  UpdateFolderRequest,
-  CreateSubheadingRequest,
-  UpdateSubheadingRequest,
-  CreateLinkRequest,
-  UpdateLinkRequest,
   CategoryModel,
+  CreateCategoryRequest,
+  CreateFolderRequest,
+  CreateLinkRequest,
+  CreateSubheadingRequest,
+  Folder,
+  FolderDetailData,
   FolderModel,
+  Link,
+  LinkModel,
+  LinksHomepageData,
+  Subheading,
   SubheadingModel,
-  LinkModel
-} from '../types/links';
+  UpdateCategoryRequest,
+  UpdateFolderRequest,
+  UpdateLinkRequest,
+  UpdateSubheadingRequest} from '../types/links';
 
 class FolderAccessDeniedError extends Error {
   constructor() {

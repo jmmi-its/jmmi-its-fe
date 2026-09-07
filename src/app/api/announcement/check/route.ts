@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { AnnouncementsService } from '@/lib/api/services/announcements-service';
 
 const service = new AnnouncementsService();

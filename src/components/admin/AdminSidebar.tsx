@@ -1,24 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
   CalendarDays,
-  Link2,
   ChevronLeft,
   ChevronRight,
+  Link2,
   LogOut,
   Menu,
   Users,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+import { cn } from '@/lib/utils';
 
 import Button from '@/components/buttons/Button';
-import { cn } from '@/lib/utils';
 
 export type UserRole = 'superadmin' | 'admin' | 'fungsio';
 

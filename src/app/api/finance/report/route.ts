@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { FinanceService } from '@/lib/api/services/finance-service';
 
 const service = new FinanceService();

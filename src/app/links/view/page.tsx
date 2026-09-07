@@ -6,6 +6,8 @@ import { Suspense } from 'react';
 import { FaFolder, FaInstagram, FaLinkedin } from 'react-icons/fa';
 import { IoChevronBack } from 'react-icons/io5';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
 import LinkButton from '@/components/links/LinkButton';
 import SubheadingSection from '@/components/links/SubheadingSection';
 import NextImage from '@/components/NextImage';
@@ -13,8 +15,6 @@ import { DANGER_TOAST, showToast } from '@/components/Toast';
 import Typography from '@/components/Typography';
 
 import { useGetFolderById } from '@/app/links/hook/useFolder';
-
-import { getLinkTargetUrl } from '@/lib/link-url';
 
 import { Link, SubheadingWithLinks } from '@/types/entities/links';
 

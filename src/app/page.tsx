@@ -1,13 +1,14 @@
 import { Metadata } from 'next';
 
-import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import Navbar from '@/components/layout/Navbar';
+
 import {
-  HeroSlider,
   AboutSection,
-  ProfileVideoSection,
   CabinetHistorySection,
   ContactUsSection,
+  HeroSlider,
+  ProfileVideoSection,
 } from '@/app/components/sections';
 
 export const metadata: Metadata = {

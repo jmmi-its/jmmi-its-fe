@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { ShortLinksService } from '@/lib/api/services/shortlinks-service';
 
 const service = new ShortLinksService();

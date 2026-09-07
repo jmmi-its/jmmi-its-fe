@@ -1,5 +1,5 @@
-import { Sora, Hanken_Grotesk, Fraunces } from 'next/font/google';
 import { Metadata } from 'next';
+import { Fraunces,Hanken_Grotesk, Sora } from 'next/font/google';
 import * as React from 'react';
 
 import '@/styles/globals.css';

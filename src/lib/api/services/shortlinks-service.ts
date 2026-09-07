@@ -1,10 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
+
 import prisma from '../db';
 import {
+  CreateShortLinkRequest,
   ShortLink,
   ShortLinkModel,
-  CreateShortLinkRequest,
   UpdateShortLinkRequest
 } from '../types/shortlinks';
 

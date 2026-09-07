@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+
 import NextImage from '@/components/NextImage';
 
 export interface CabinetItem {

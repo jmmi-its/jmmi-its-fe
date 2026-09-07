@@ -1,4 +1,5 @@
 import { baseURL } from '@/lib/api';
+
 import { siteConfig } from '@/constant/config';
 
 type TrackableLink = {

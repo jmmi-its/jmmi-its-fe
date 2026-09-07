@@ -1,8 +1,8 @@
 'use client';
 
 import { ChevronLeft, ChevronRight, Download, Edit, Plus, QrCode, Trash2, X } from 'lucide-react';
-import * as React from 'react';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
+import * as React from 'react';
 
 import { buildShortUrl } from '@/lib/link-url';
 

@@ -1,9 +1,9 @@
 import * as React from 'react';
 
+import { getLinkTargetUrl } from '@/lib/link-url';
+
 import LinkButton from '@/components/links/LinkButton';
 import Typography from '@/components/Typography';
-
-import { getLinkTargetUrl } from '@/lib/link-url';
 
 import { Link } from '@/types/entities/links';
 
